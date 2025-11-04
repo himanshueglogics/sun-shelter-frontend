@@ -290,13 +290,13 @@ const Dashboard = () => {
             )}
           </div>
           <div className="alerts-footer">
-            <div className="pagination">
+            {/* <div className="pagination">
               <span className="pagination-text">{currentPage} / {totalPages || 13}</span>
-            </div>
-            <button className="restart-button" onClick={handleRestart}>
+            </div> */}
+            {/* <button className="restart-button" onClick={handleRestart}>
               <RotateCcw size={16} />
               <span>Restart</span>
-            </button>
+            </button> */}
           </div>
         </div>
       </div>

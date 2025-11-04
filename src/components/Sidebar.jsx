@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut } from 'lucide-react';
+import { LayoutDashboard, LogOut, Waves, CalendarDays, Wallet, Users, Plug } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = () => {
@@ -8,7 +8,12 @@ const Sidebar = () => {
   const location = useLocation();
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' }
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    { icon: Waves, label: 'Manage Beaches', path: '/manage-beaches' },
+    { icon: CalendarDays, label: 'Manage Bookings', path: '/manage-bookings' },
+    { icon: Wallet, label: 'Manage Finance', path: '/manage-finance' },
+    { icon: Users, label: 'Manage Admins', path: '/manage-admins' },
+    { icon: Plug, label: 'Manage Integrations', path: '/manage-integrations' }
   ];
 
   const handleLogout = () => {
