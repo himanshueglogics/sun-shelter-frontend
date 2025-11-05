@@ -1,11 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Waves, CalendarDays, Wallet, Users, Plug } from 'lucide-react';
+import { LayoutDashboard, LogOut, Waves, CalendarDays, Wallet, Users, Plug, ChevronLeft, ChevronRight } from 'lucide-react';
 import './Sidebar.css';
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Persisted hidden state so you can hide/show the sidebar without UI changes
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem('sidebarHidden') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleHidden = () => {
+    setHidden((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('sidebarHidden', next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    // Reflect state on <body> so layout can adjust via CSS
+    try {
+      document.body.classList.toggle('sidebar-collapsed', hidden);
+    } catch {}
+  }, [hidden]);
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -25,7 +49,17 @@ const Sidebar = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   return (
-    <div className="sidebar">
+    <>
+      {/* Visible toggle button */}
+      <button
+        className="sidebar-toggle"
+        onClick={toggleHidden}
+        aria-label={hidden ? 'Open sidebar' : 'Hide sidebar'}
+        title={hidden ? 'Open sidebar' : 'Hide sidebar'}
+      >
+        {hidden ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+      </button>
+      <div className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
@@ -69,7 +103,8 @@ const Sidebar = () => {
           <span>Logout</span>
         </button>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

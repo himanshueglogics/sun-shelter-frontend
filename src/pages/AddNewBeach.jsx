@@ -170,7 +170,8 @@ const AddNewBeach = () => {
             await axios.post(`/beaches/${beachId}/zones`, {
               name: zone.name,
               rows: zone.rows,
-              cols: zone.cols
+              cols: zone.cols,
+              sunbeds: zone.sunbeds
             });
           }
         }

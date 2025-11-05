@@ -8,6 +8,7 @@
   left: 0;
   top: 0;
   color: #ffffff;
+  transition: transform 0.25s ease;
 }
 
 .sidebar-header {
@@ -137,4 +138,50 @@
 
 .logout-button svg {
   flex-shrink: 0;
+}
+
+/* Toggle button (visible icon) */
+.sidebar-toggle {
+  position: fixed;
+  top: 16px;
+  left: 250px; /* aligns to sidebar edge when open */
+  z-index: 1100;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #4A90E2;
+  color: #ffffff;
+  border: none;
+  border-radius: 9999px;
+  box-shadow: 0 6px 16px rgba(74, 144, 226, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.sidebar-toggle:hover {
+  background: #3B7BC5;
+  transform: scale(1.04);
+  box-shadow: 0 8px 20px rgba(74, 144, 226, 0.45);
+}
+
+.sidebar-toggle:focus-visible {
+  outline: 3px solid rgba(74, 144, 226, 0.35);
+  outline-offset: 2px;
+}
+
+/* Collapsed state adjustments */
+body.sidebar-collapsed .sidebar {
+  transform: translateX(-260px);
+}
+
+/* Shift main content when collapsed (works on pages using .dashboard-content) */
+body.sidebar-collapsed .dashboard-content {
+  margin-left: 0 !important;
+}
+
+/* Move toggle to the screen edge when collapsed */
+body.sidebar-collapsed .sidebar-toggle {
+  left: 16px;
 }

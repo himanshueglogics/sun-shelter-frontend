@@ -7,7 +7,12 @@ import './ManagePage.css';
 import './ManageFinance.css';
 
 const ManageFinance = () => {
-  const [loading, setLoading] = useState(true);
+  const [loadingOverview, setLoadingOverview] = useState(false);
+  const [loadingPayouts, setLoadingPayouts] = useState(false);
+  const [loadingBeachRevenue, setLoadingBeachRevenue] = useState(false);
+  const [loadingServiceFees, setLoadingServiceFees] = useState(false);
+  const [loadingDetailed, setLoadingDetailed] = useState(false);
+  const [loadingInsights, setLoadingInsights] = useState(false);
   const [overview, setOverview] = useState({ totalRevenue: 0, pendingPayouts: 0, totalExpenses: 0 });
   const [payouts, setPayouts] = useState([]);
   const [beachRevenue, setBeachRevenue] = useState([]);
@@ -19,72 +24,112 @@ const ManageFinance = () => {
   const [filterYear, setFilterYear] = useState('');
 
   useEffect(() => {
-    fetchFinanceData();
+    // Kick off independent fetches so only each section updates
+    fetchOverview();
+    fetchPayouts();
+    fetchBeachRevenue();
+    fetchServiceFees();
+    fetchDetailedReport();
+    fetchInsights();
   }, []);
 
-  const fetchFinanceData = async () => {
+  const fetchOverview = async () => {
     try {
-      // Set dummy data immediately (will be replaced if API succeeds)
-      setOverview({ totalRevenue: 1234567.89, pendingPayouts: 27, totalExpenses: 687664.32 });
-      
-      // Try to fetch overview from API
-      try {
-        const overviewRes = await axios.get('/finance/overview');
-        if (overviewRes.data) {
-          setOverview(overviewRes.data);
-        }
-      } catch (err) {
-        console.log('Using dummy overview data');
-      }
+      setLoadingOverview(true);
+      const res = await axios.get('/finance/overview').catch(() => ({ data: { totalRevenue: 0, pendingPayouts: 0, totalExpenses: 0 } }));
+      setOverview(res.data);
+    } catch (error) {
+      console.error('Error fetching overview:', error);
+    } finally {
+      setLoadingOverview(false);
+    }
+  };
 
-      // Set dummy data for all sections
-      setPayouts([
-        { id: 'PAY001', beach: 'Sunset Beach', amount: 12500, date: '2024-07-15', status: 'Pending' },
-        { id: 'PAY002', beach: 'Crystal Cove Management', amount: 9200, date: '2024-07-14', status: 'Pending' },
-        { id: 'PAY003', beach: 'Palm Oasis', amount: 15600, date: '2024-07-13', status: 'Pending' },
-        { id: 'PAY004', beach: 'SEA Golden Sands', amount: 11000, date: '2024-07-12', status: 'Pending' }
+  const fetchPayouts = async () => {
+    try {
+      setLoadingPayouts(true);
+      const res = await axios.get('/finance/payouts').catch(() => ({ data: [] }));
+      const mapped = res.data.map(p => ({
+        id: p._id,
+        beach: p.beach?.name || 'Unknown Beach',
+        amount: p.amount,
+        date: new Date(p.requestedDate).toLocaleDateString(),
+        status: p.status.charAt(0).toUpperCase() + p.status.slice(1)
+      }));
+      setPayouts(mapped.length > 0 ? mapped : [
+        { id: 'demo1', beach: 'Sunset Beach', amount: 12500, date: '2024-07-15', status: 'Pending' },
+        { id: 'demo2', beach: 'Crystal Cove', amount: 9200, date: '2024-07-14', status: 'Pending' }
       ]);
+    } catch (error) {
+      console.error('Error fetching payouts:', error);
+    } finally {
+      setLoadingPayouts(false);
+    }
+  };
 
-      setBeachRevenue([
+  const fetchBeachRevenue = async () => {
+    try {
+      setLoadingBeachRevenue(true);
+      const res = await axios.get('/finance/beach-revenue').catch(() => ({ data: [] }));
+      const colors = ['#3b82f6', '#f59e0b', '#1e3a8a', '#fbbf24', '#10b981', '#ef4444'];
+      const mapped = res.data.map((item, idx) => ({ name: item.name, value: item.value, color: colors[idx % colors.length] }));
+      setBeachRevenue(mapped.length > 0 ? mapped : [
         { name: 'Sunset Beach', value: 35, color: '#3b82f6' },
-        { name: 'Crystal Cove', value: 28, color: '#f59e0b' },
-        { name: 'Palm Oasis', value: 22, color: '#1e3a8a' },
-        { name: 'Golden Sands', value: 15, color: '#fbbf24' }
+        { name: 'Crystal Cove', value: 28, color: '#f59e0b' }
       ]);
+    } catch (error) {
+      console.error('Error fetching beach revenue:', error);
+    } finally {
+      setLoadingBeachRevenue(false);
+    }
+  };
 
-      setServiceFees([
+  const fetchServiceFees = async (paramsStr = '') => {
+    try {
+      setLoadingServiceFees(true);
+      const res = await axios.get(`/finance/service-fees${paramsStr ? `?${paramsStr}` : ''}`).catch(() => ({ data: [] }));
+      setServiceFees(res.data.length > 0 ? res.data : [
         { beach: 'Sunset Beach', bookings: 245, vip: 120, guests: 890, revenue: '$125,000' },
-        { beach: 'Crystal Cove', bookings: 198, vip: 95, guests: 720, revenue: '$98,500' },
-        { beach: 'Palm Oasis', bookings: 167, vip: 78, guests: 610, revenue: '$82,300' },
-        { beach: 'Golden Sands', bookings: 134, vip: 62, guests: 490, revenue: '$67,800' }
+        { beach: 'Crystal Cove', bookings: 198, vip: 95, guests: 720, revenue: '$98,500' }
       ]);
+    } catch (error) {
+      console.error('Error fetching service fees:', error);
+    } finally {
+      setLoadingServiceFees(false);
+    }
+  };
 
-      setDetailedReport([
+  const fetchDetailedReport = async (paramsStr = '') => {
+    try {
+      setLoadingDetailed(true);
+      const res = await axios.get(`/finance/detailed-report${paramsStr ? `?${paramsStr}` : ''}`).catch(() => ({ data: [] }));
+      setDetailedReport(res.data.length > 0 ? res.data : [
         { beach: 'Sunset Beach', bookingRevenue: '$125,000', serviceFees: '$8,750', totalRevenue: '$133,750' },
-        { beach: 'Crystal Cove', bookingRevenue: '$98,500', serviceFees: '$6,895', totalRevenue: '$105,395' },
-        { beach: 'Palm Oasis', bookingRevenue: '$82,300', serviceFees: '$5,761', totalRevenue: '$88,061' },
-        { beach: 'Golden Sands', bookingRevenue: '$67,800', serviceFees: '$4,746', totalRevenue: '$72,546' },
-        { beach: 'Ocean Breeze', bookingRevenue: '$54,200', serviceFees: '$3,794', totalRevenue: '$57,994' }
+        { beach: 'Crystal Cove', bookingRevenue: '$98,500', serviceFees: '$6,895', totalRevenue: '$105,395' }
       ]);
+    } catch (error) {
+      console.error('Error fetching detailed report:', error);
+    } finally {
+      setLoadingDetailed(false);
+    }
+  };
 
-      setInsightsData([
+  const fetchInsights = async (paramsStr = '') => {
+    try {
+      setLoadingInsights(true);
+      const res = await axios.get(`/finance/insights${paramsStr ? `?${paramsStr}` : ''}`).catch(() => ({ data: [] }));
+      setInsightsData(res.data.length > 0 ? res.data : [
         { month: 'Jan', revenue: 52000 },
         { month: 'Feb', revenue: 48000 },
         { month: 'Mar', revenue: 61000 },
         { month: 'Apr', revenue: 78000 },
         { month: 'May', revenue: 92000 },
-        { month: 'Jun', revenue: 105000 },
-        { month: 'Jul', revenue: 118000 },
-        { month: 'Aug', revenue: 112000 },
-        { month: 'Sep', revenue: 98000 },
-        { month: 'Oct', revenue: 85000 },
-        { month: 'Nov', revenue: 72000 },
-        { month: 'Dec', revenue: 88000 }
+        { month: 'Jun', revenue: 105000 }
       ]);
     } catch (error) {
-      console.error('Error fetching finance data:', error);
+      console.error('Error fetching insights:', error);
     } finally {
-      setLoading(false);
+      setLoadingInsights(false);
     }
   };
 
@@ -92,8 +137,12 @@ const ManageFinance = () => {
     try {
       await axios.post(`/finance/payouts/${id}/approve`);
       setPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'Approved' } : p));
+      // Update pending payouts count
+      setOverview(prev => ({ ...prev, pendingPayouts: Math.max(0, prev.pendingPayouts - 1) }));
+      alert('Payout approved successfully!');
     } catch (e) {
       console.error('Error approving payout:', e);
+      alert('Failed to approve payout');
     }
   };
 
@@ -101,21 +150,85 @@ const ManageFinance = () => {
     try {
       await axios.post(`/finance/payouts/${id}/reject`);
       setPayouts(prev => prev.filter(p => p.id !== id));
+      // Update pending payouts count
+      setOverview(prev => ({ ...prev, pendingPayouts: Math.max(0, prev.pendingPayouts - 1) }));
+      alert('Payout rejected successfully!');
     } catch (e) {
       console.error('Error rejecting payout:', e);
+      alert('Failed to reject payout');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="dashboard-layout">
-        <Sidebar />
-        <div className="dashboard-content">
-          <div className="loading">Loading financial dashboard...</div>
-        </div>
-      </div>
-    );
-  }
+  const applyFilters = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filterBeach) params.append('beach', filterBeach);
+      if (filterMonth) params.append('month', filterMonth);
+      if (filterYear) params.append('year', filterYear);
+      
+      const qs = params.toString();
+      // Reload only the affected sections
+      await Promise.all([
+        fetchServiceFees(qs),
+        fetchDetailedReport(qs),
+        fetchInsights(qs)
+      ]);
+    } catch (error) {
+      console.error('Error applying filters:', error);
+    }
+  };
+
+  const clearFilters = () => {
+    setFilterBeach('');
+    setFilterMonth('');
+    setFilterYear('');
+    // Reload only sections influenced by filters with default params
+    fetchServiceFees('');
+    fetchDetailedReport('');
+    fetchInsights('');
+  };
+
+  const seedDummyData = async () => {
+    if (!window.confirm('This will replace all existing finance data with dummy data. Continue?')) {
+      return;
+    }
+    
+    try {
+      const response = await axios.post('/finance/seed');
+      alert(`Success! Created ${response.data.financeRecords} finance records and ${response.data.payouts} payouts`);
+      // Refresh all sections without blocking the whole page
+      fetchOverview();
+      fetchPayouts();
+      fetchBeachRevenue();
+      fetchServiceFees('');
+      fetchDetailedReport('');
+      fetchInsights('');
+    } catch (error) {
+      console.error('Error seeding data:', error);
+      alert('Failed to seed data: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const downloadStatement = () => {
+    // Create CSV content
+    let csvContent = "Beach,Amount,Date,Status\n";
+    payouts.forEach(payout => {
+      csvContent += `${payout.beach},${payout.amount},${payout.date},${payout.status}\n`;
+    });
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `payout_statement_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Note: Removing global blocking loader to avoid full component reload
 
   return (
     <div className="dashboard-layout">
@@ -123,6 +236,21 @@ const ManageFinance = () => {
       <div className="dashboard-content">
         <div className="finance-header">
           <h1>Financial Dashboard</h1>
+          <button 
+            onClick={seedDummyData} 
+            style={{
+              padding: '8px 16px',
+              background: '#4A90E2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            Generate Dummy Data
+          </button>
         </div>
 
         {/* Overview Section */}
@@ -189,8 +317,8 @@ const ManageFinance = () => {
               </select>
             </div>
             <div className="filter-actions">
-              <button className="btn-filter clear" onClick={() => { setFilterBeach(''); setFilterMonth(''); setFilterYear(''); }}>Clear Filters</button>
-              <button className="btn-filter apply">Apply Filters</button>
+              <button className="btn-filter clear" onClick={clearFilters}>Clear Filters</button>
+              <button className="btn-filter apply" onClick={applyFilters}>Apply Filters</button>
             </div>
           </div>
         </div>
@@ -213,7 +341,7 @@ const ManageFinance = () => {
         <div className="payout-section">
           <div className="payout-header">
             <h3>Payout Approval Queue</h3>
-            <span className="link-text">Download Statement</span>
+            <span className="link-text" onClick={downloadStatement} style={{ cursor: 'pointer' }}>Download Statement</span>
           </div>
           <table className="payout-table">
             <thead>
@@ -267,6 +395,7 @@ const ManageFinance = () => {
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
+                <Tooltip />
               </PieChart>
             </ResponsiveContainer>
             <div className="donut-legend">

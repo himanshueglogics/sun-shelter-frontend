@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from '../api/axios';
 import Sidebar from '../components/Sidebar';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import './ManagePage.css';
@@ -15,14 +16,14 @@ const ManageIntegrations = () => {
   const [englishEnabled, setEnglishEnabled] = useState(true);
   const [portugueseEnabled, setPortugueseEnabled] = useState(false);
 
-  const errorLogs = [
+  const [errorLogs, setErrorLogs] = useState([
     { timestamp: '2024-11-04 14:32:15', source: 'Weather API', message: 'API rate limit exceeded. Upgrade needed.', severity: 'Critical' },
     { timestamp: '2024-11-04 12:18:42', source: 'Maps Integration', message: 'Unable to fetch location coordinates for beach', severity: 'Warning' },
     { timestamp: '2024-11-04 09:45:23', source: 'Stripe', message: 'Payment webhook validation failed. Check endpoint.', severity: 'Warning' },
     { timestamp: '2024-11-03 18:22:10', source: 'PayPal', message: 'Connection timeout after 30s', severity: 'Error' }
-  ];
+  ]);
 
-  const recentTransactions = [
+  const [recentTransactions] = useState([
     { id: 'TXN001', date: '2024-10-29', amount: '$1,120.00', status: 'Completed' },
     { id: 'TXN002', date: '2024-10-24', amount: '$3,150.00', status: 'Pending' },
     { id: 'TXN003', date: '2024-10-20', amount: '$890.00', status: 'Completed' },
@@ -30,29 +31,124 @@ const ManageIntegrations = () => {
     { id: 'TXN005', date: '2024-10-21', amount: '$1,450.00', status: 'Completed' },
     { id: 'TXN006', date: '2024-10-20', amount: '$750.00', status: 'Pending' },
     { id: 'TXN007', date: '2024-10-16', amount: '$1,185.00', status: 'Completed' }
-  ];
+  ]);
 
-  const occupancyData = [
+  const [occupancyData] = useState([
     { property: 'Coastal Breeze Suites', unitType: 'Studio', occupancy: '92%', available: 3 },
     { property: 'Mountain View Lodge', unitType: '2-Bedroom', occupancy: '85%', available: 5 },
     { property: 'City Central Apartments', unitType: '1-Bedroom', occupancy: '88%', available: 4 },
     { property: 'Riverside Cottages', unitType: '3-Bedroom', occupancy: '78%', available: 7 },
     { property: 'Suburban Manor Homes', unitType: '2-Bedroom', occupancy: '91%', available: 2 }
-  ];
+  ]);
 
-  const payoutReports = [
+  const [payoutReports] = useState([
     { id: 'PAY7001', date: '2024-09-30', amount: '$3,500.00', status: 'Processed', method: 'Bank Transfer' },
     { id: 'PAY7002', date: '2024-08-15', amount: '$2,100.00', status: 'Pending', method: 'PayPal' },
     { id: 'PAY7003', date: '2024-08-24', amount: '$650.00', status: 'Completed', method: 'Stripe' },
     { id: 'PAY7004', date: '2024-08-22', amount: '$3,220.00', status: 'Pending', method: 'Bank Transfer' },
     { id: 'PAY7005', date: '2024-08-22', amount: '$1,900.00', status: 'Processed', method: 'PayPal' },
     { id: 'PAY7006', date: '2024-08-22', amount: '$850.00', status: 'Pending', method: 'Stripe' }
-  ];
+  ]);
 
-  const occupancyChartData = [
+  const [occupancyChartData] = useState([
     { name: 'Occupied', value: 67, color: '#4A90E2' },
     { name: 'Available', value: 33, color: '#E8F1FA' }
-  ];
+  ]);
+
+  // Handlers: keep UI unchanged, add functionality
+  const testWeatherConnection = async () => {
+    try {
+      const res = await axios.post('/integrations/weather/test');
+      alert(res.data?.message || 'Weather API connection successful');
+    } catch (e) {
+      alert(e.response?.data?.message || 'Weather API test failed');
+    }
+  };
+
+  const testMapsConnection = async () => {
+    try {
+      const res = await axios.post('/integrations/maps/test');
+      alert(res.data?.message || 'Maps API connection successful');
+    } catch (e) {
+      alert(e.response?.data?.message || 'Maps API test failed');
+    }
+  };
+
+  const toggleWeather = async () => {
+    const next = !weatherEnabled;
+    setWeatherEnabled(next);
+    try {
+      await axios.post('/integrations/weather/toggle', { enabled: next });
+    } catch (e) {
+      // revert on failure
+      setWeatherEnabled(!next);
+      alert(e.response?.data?.message || 'Failed to update Weather setting');
+    }
+  };
+
+  const toggleMaps = async () => {
+    const next = !mapsEnabled;
+    setMapsEnabled(next);
+    try {
+      await axios.post('/integrations/maps/toggle', { enabled: next });
+    } catch (e) {
+      setMapsEnabled(!next);
+      alert(e.response?.data?.message || 'Failed to update Maps setting');
+    }
+  };
+
+  const toggleStripeWebhook = async () => {
+    const next = !stripeEnabled;
+    setStripeEnabled(next);
+    try {
+      await axios.post('/integrations/stripe/webhook-toggle', { enabled: next });
+    } catch (e) {
+      setStripeEnabled(!next);
+      alert(e.response?.data?.message || 'Failed to update Stripe webhook');
+    }
+  };
+
+  const togglePaypalWebhook = async () => {
+    const next = !paypalEnabled;
+    setPaypalEnabled(next);
+    try {
+      await axios.post('/integrations/paypal/webhook-toggle', { enabled: next });
+    } catch (e) {
+      setPaypalEnabled(!next);
+      alert(e.response?.data?.message || 'Failed to update PayPal webhook');
+    }
+  };
+
+  const reconnectStripe = async () => {
+    try {
+      const res = await axios.post('/integrations/stripe/reconnect');
+      alert(res.data?.message || 'Stripe reconnected');
+    } catch (e) {
+      alert(e.response?.data?.message || 'Stripe reconnect failed');
+    }
+  };
+
+  const reconnectPaypal = async () => {
+    try {
+      const res = await axios.post('/integrations/paypal/reconnect');
+      alert(res.data?.message || 'PayPal reconnected');
+    } catch (e) {
+      alert(e.response?.data?.message || 'PayPal reconnect failed');
+    }
+  };
+
+  const clearErrorLogs = async () => {
+    try {
+      await axios.post('/integrations/logs/clear');
+    } catch (_) {
+      // ignore API failure, still clear locally to keep UI responsive
+    }
+    setErrorLogs([]);
+  };
+
+  const addNewPayment = () => {
+    alert('Add New payment method flow coming soon.');
+  };
 
   return (
     <div className="dashboard-layout">
@@ -100,11 +196,11 @@ const ManageIntegrations = () => {
                 <div className="integration-toggle">
                   <span>Enable Toggle</span>
                   <label className="switch">
-                    <input type="checkbox" checked={weatherEnabled} onChange={() => setWeatherEnabled(!weatherEnabled)} />
+                    <input type="checkbox" checked={weatherEnabled} onChange={toggleWeather} />
                     <span className="slider"></span>
                   </label>
                 </div>
-                <button className="btn-configure">Test Connection</button>
+                <button className="btn-configure" onClick={testWeatherConnection}>Test Connection</button>
               </div>
 
               <div className="integration-card">
@@ -125,18 +221,18 @@ const ManageIntegrations = () => {
                 <div className="integration-toggle">
                   <span>Enable Toggle</span>
                   <label className="switch">
-                    <input type="checkbox" checked={mapsEnabled} onChange={() => setMapsEnabled(!mapsEnabled)} />
+                    <input type="checkbox" checked={mapsEnabled} onChange={toggleMaps} />
                     <span className="slider"></span>
                   </label>
                 </div>
-                <button className="btn-configure">Test Connection</button>
+                <button className="btn-configure" onClick={testMapsConnection}>Test Connection</button>
               </div>
             </div>
 
             {/* Payment Gateway Settings */}
             <div className="section-header">
               <h2>Payment Gateway Settings</h2>
-              <button className="btn-add">+ Add New</button>
+              <button className="btn-add" onClick={addNewPayment}>+ Add New</button>
             </div>
 
             <div className="payment-cards">
@@ -160,11 +256,11 @@ const ManageIntegrations = () => {
                 <div className="payment-toggle">
                   <span>Enable Webhook</span>
                   <label className="switch">
-                    <input type="checkbox" checked={stripeEnabled} onChange={() => setStripeEnabled(!stripeEnabled)} />
+                    <input type="checkbox" checked={stripeEnabled} onChange={toggleStripeWebhook} />
                     <span className="slider"></span>
                   </label>
                 </div>
-                <button className="btn-reconnect">Reconnect Account</button>
+                <button className="btn-reconnect" onClick={reconnectStripe}>Reconnect Account</button>
               </div>
 
               <div className="payment-card">
@@ -187,11 +283,11 @@ const ManageIntegrations = () => {
                 <div className="payment-toggle">
                   <span>Enable Webhook</span>
                   <label className="switch">
-                    <input type="checkbox" checked={paypalEnabled} onChange={() => setPaypalEnabled(!paypalEnabled)} />
+                    <input type="checkbox" checked={paypalEnabled} onChange={togglePaypalWebhook} />
                     <span className="slider"></span>
                   </label>
                 </div>
-                <button className="btn-reconnect">Reconnect Account</button>
+                <button className="btn-reconnect" onClick={reconnectPaypal}>Reconnect Account</button>
               </div>
             </div>
 
@@ -266,7 +362,7 @@ const ManageIntegrations = () => {
             {/* Integration Error Log */}
             <div className="section-header">
               <h2>Integration Error Log</h2>
-              <button className="btn-clear">Clear Logs</button>
+              <button className="btn-clear" onClick={clearErrorLogs}>Clear Logs</button>
             </div>
             <table className="error-table">
               <thead>
