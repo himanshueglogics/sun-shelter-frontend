@@ -119,7 +119,7 @@ const ManageBookings = () => {
         </div>
 
         <div className="stats-cards">
-          <div className="stat-card">
+          <div className="stat-card stat-total-bookings">
             <div className="stat-content">
               <div className="stat-label">Total Bookings</div>
               <div className="stat-value">{stats.total.toLocaleString()}</div>
@@ -133,7 +133,7 @@ const ManageBookings = () => {
               </svg>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card stat-active-bookings">
             <div className="stat-content">
               <div className="stat-label">Active Bookings</div>
               <div className="stat-value">{stats.active.toLocaleString()}</div>
@@ -144,7 +144,7 @@ const ManageBookings = () => {
               </svg>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card stat-cancelled-bookings">
             <div className="stat-content">
               <div className="stat-label">Cancelled Bookings</div>
               <div className="stat-value">{stats.cancelled.toLocaleString()}</div>

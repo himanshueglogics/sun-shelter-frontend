@@ -187,6 +187,29 @@
   background: linear-gradient(135deg, #D4D4D4 0%, #C0C0C0 100%);
 }
 
+/* Per-section overrides */
+.stat-card.stat-total-beaches {
+  background: #ffffff;
+  border: 1px solid #e6e9ef;
+}
+
+.stat-card.stat-active-admins {
+  background: linear-gradient(135deg, #E8C89B 0%, #D9B88A 100%);
+}
+
+.stat-card.stat-total-bookings {
+  background: #ffffff;
+  border: 1px solid #e6e9ef;
+}
+
+.stat-card.stat-active-bookings {
+  background: linear-gradient(135deg, #E8C89B 0%, #D9B88A 100%);
+}
+
+.stat-card.stat-cancelled-bookings {
+  background: linear-gradient(135deg, #D4D4D4 0%, #C0C0C0 100%);
+}
+
 .stat-info {
   display: flex;
   flex-direction: column;

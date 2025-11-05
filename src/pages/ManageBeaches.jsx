@@ -133,13 +133,13 @@ const ManageBeaches = () => {
         </div>
 
         <div className="stats-grid">
-          <div className="stat-card">
+          <div className="stat-card stat-total-beaches">
             <div className="stat-info">
               <div className="stat-label">Total Beaches Managed</div>
               <div className="stat-value">{stats.totalBeaches}</div>
             </div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card stat-active-admins">
             <div className="stat-info">
               <div className="stat-label">Active Admins</div>
               <div className="stat-value">{stats.activeAdmins}</div>
