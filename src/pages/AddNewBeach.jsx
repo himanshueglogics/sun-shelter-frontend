@@ -121,11 +121,9 @@ const AddNewBeach = () => {
   const toggleSunbed = (row, col) => {
     setSunbeds(sunbeds.map(b => {
       if (b.row === row && b.col === col) {
-        // Don't allow toggling reserved or unavailable beds
         if (b.status === 'reserved' || b.status === 'unavailable') {
           return b;
         }
-        // Toggle between available and selected
         return { ...b, status: b.status === 'available' ? 'selected' : 'available' };
       }
       return b;
