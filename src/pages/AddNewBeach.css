@@ -1,15 +1,17 @@
 .add-beach-page {
-  background: #f5f7fa;
+  background: #F0F8FF;
   padding: 32px;
   min-height: 100vh;
+  font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.back-button {
+.backbuttonmain{
+  color:black;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-left: 13vw;
-  margin-top: 1vw;
+  /* margin-left: 13vw;
+  margin-top: 1vw; */
   background: white;
   border: 1px solid #e0e0e0;
   font-size: 18px;
@@ -22,28 +24,28 @@
   transition: all 0.2s;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
-
-.back-button:hover {
+.backbuttonmain:hover{
   background: #f8f9fa;
   border-color: #4A90E2;
   color: #4A90E2;
   box-shadow: 0 2px 6px rgba(74, 144, 226, 0.15);
 }
 
-.back-button svg {
+.backbuttonmain svg{
   width: 20px;
   height: 20px;
 }
 
+
+
 .beach-form-container {
-  background: white;
   border-radius: 12px;
-  padding: 40px;
+  padding: 32px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .image-upload-section {
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .image-preview {
@@ -79,8 +81,8 @@
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-bottom: 24px;
+  gap: 16px 20px;
+  margin-bottom: 16px;
 }
 
 .form-row.single {
@@ -91,12 +93,14 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  
 }
 
 .form-field label {
   font-size: 14px;
   font-weight: 600;
   color: #333;
+  margin-bottom: 4px;
 }
 
 .form-field input,
@@ -125,15 +129,22 @@
 .services-section,
 .zones-section,
 .sunbed-section {
-  margin-top: 32px;
+  margin-top: 24px;
+  background-color:  white;  
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  max-height: 450px;
+  overflow-y: auto;
 }
 
 .services-section h3,
 .zones-section h3,
 .sunbed-section h3 {
   font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
 }
 
 .services-grid {

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import axios from '../api/axios';
 import Sidebar from '../components/Sidebar';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -59,18 +60,18 @@ const ManageIntegrations = () => {
   const testWeatherConnection = async () => {
     try {
       const res = await axios.post('/integrations/weather/test');
-      alert(res.data?.message || 'Weather API connection successful');
+      toast.success(res.data?.message || 'Weather API connection successful');
     } catch (e) {
-      alert(e.response?.data?.message || 'Weather API test failed');
+      toast.error(e.response?.data?.message || 'Weather API test failed');
     }
   };
 
   const testMapsConnection = async () => {
     try {
       const res = await axios.post('/integrations/maps/test');
-      alert(res.data?.message || 'Maps API connection successful');
+      toast.success(res.data?.message || 'Maps API connection successful');
     } catch (e) {
-      alert(e.response?.data?.message || 'Maps API test failed');
+      toast.error(e.response?.data?.message || 'Maps API test failed');
     }
   };
 
@@ -82,7 +83,7 @@ const ManageIntegrations = () => {
     } catch (e) {
       // revert on failure
       setWeatherEnabled(!next);
-      alert(e.response?.data?.message || 'Failed to update Weather setting');
+      toast.error(e.response?.data?.message || 'Failed to update Weather setting');
     }
   };
 
@@ -93,7 +94,7 @@ const ManageIntegrations = () => {
       await axios.post('/integrations/maps/toggle', { enabled: next });
     } catch (e) {
       setMapsEnabled(!next);
-      alert(e.response?.data?.message || 'Failed to update Maps setting');
+      toast.error(e.response?.data?.message || 'Failed to update Maps setting');
     }
   };
 
@@ -104,7 +105,7 @@ const ManageIntegrations = () => {
       await axios.post('/integrations/stripe/webhook-toggle', { enabled: next });
     } catch (e) {
       setStripeEnabled(!next);
-      alert(e.response?.data?.message || 'Failed to update Stripe webhook');
+      toast.error(e.response?.data?.message || 'Failed to update Stripe webhook');
     }
   };
 
@@ -115,25 +116,25 @@ const ManageIntegrations = () => {
       await axios.post('/integrations/paypal/webhook-toggle', { enabled: next });
     } catch (e) {
       setPaypalEnabled(!next);
-      alert(e.response?.data?.message || 'Failed to update PayPal webhook');
+      toast.error(e.response?.data?.message || 'Failed to update PayPal webhook');
     }
   };
 
   const reconnectStripe = async () => {
     try {
       const res = await axios.post('/integrations/stripe/reconnect');
-      alert(res.data?.message || 'Stripe reconnected');
+      toast.success(res.data?.message || 'Stripe reconnected');
     } catch (e) {
-      alert(e.response?.data?.message || 'Stripe reconnect failed');
+      toast.error(e.response?.data?.message || 'Stripe reconnect failed');
     }
   };
 
   const reconnectPaypal = async () => {
     try {
       const res = await axios.post('/integrations/paypal/reconnect');
-      alert(res.data?.message || 'PayPal reconnected');
+      toast.success(res.data?.message || 'PayPal reconnected');
     } catch (e) {
-      alert(e.response?.data?.message || 'PayPal reconnect failed');
+      toast.error(e.response?.data?.message || 'PayPal reconnect failed');
     }
   };
 
@@ -144,10 +145,11 @@ const ManageIntegrations = () => {
       // ignore API failure, still clear locally to keep UI responsive
     }
     setErrorLogs([]);
+    toast.info('Integration logs cleared');
   };
 
   const addNewPayment = () => {
-    alert('Add New payment method flow coming soon.');
+    toast.info('Add New payment method flow coming soon');
   };
 
   return (

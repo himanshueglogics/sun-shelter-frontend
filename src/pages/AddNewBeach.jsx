@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import axios from '../api/axios';
 import { ChevronLeft, Plus, X, Umbrella } from 'lucide-react';
 import './AddNewBeach.css';
+import { toast } from 'react-toastify';
 
 const AddNewBeach = () => {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ const AddNewBeach = () => {
       }
     } catch (err) {
       console.error('Failed to load beach data:', err);
-      alert('Failed to load beach data');
+      toast.error('Failed to load beach data');
     }
   };
 
@@ -155,12 +156,12 @@ const AddNewBeach = () => {
         // Update existing beach
         await axios.put(`/beaches/${id}`, payload);
         beachId = id;
-        alert('Beach updated successfully!');
+        toast.success('Beach updated successfully!');
       } else {
         // Create new beach
         const res = await axios.post('/beaches', payload);
         beachId = res.data._id;
-        alert('Beach created successfully!');
+        toast.success('Beach created successfully!');
       }
       
       // Create/update zones (only for new beaches or if zones changed)
@@ -180,7 +181,7 @@ const AddNewBeach = () => {
       navigate('/manage-beaches');
     } catch (err) {
       console.error(`Failed to ${isEditMode ? 'update' : 'create'} beach:`, err);
-      alert(`Failed to ${isEditMode ? 'update' : 'create'} beach`);
+      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} beach`);
     }
   };
 
@@ -188,13 +189,14 @@ const AddNewBeach = () => {
     <div className="dashboard-layout">
       <Sidebar />
       <div className="dashboard-content add-beach-page">
-
+        
         <div className="beach-form-container">
-        <button className="back-button" onClick={() => navigate('/manage-beaches')}>
+          <div className="image-upload-section">
+        <button className='backbuttonmain' onClick={() => navigate('/manage-beaches')}>
           <ChevronLeft size={24} />
           <span>{isEditMode ? 'Edit Beach' : 'Add New Beach'}</span>
         </button>
-          <div className="image-upload-section">
+            
             <div className="image-preview">
               {imagePreview ? (
                 <img src={imagePreview} alt="Beach preview" />
@@ -208,6 +210,7 @@ const AddNewBeach = () => {
               </button>
               <input id="imageInput" type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
             </div>
+            
           </div>
 
           <div className="form-row">
@@ -225,10 +228,15 @@ const AddNewBeach = () => {
             </div>
           </div>
 
-          <div className="form-row">
+          <div className="form-row single">
             <div className="form-field">
               <label>Beach Location</label>
-              <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="USA" required />
+              <input
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                placeholder="USA"
+                required
+              />
               {form.location ? (
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(form.location)}`}
@@ -238,9 +246,16 @@ const AddNewBeach = () => {
                 >
                   View on Google Maps
                 </a>
-              ) : null}
+              ) : <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(form.location)}`}
+                  className="view-map-link"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View on Google Maps
+                </a>}
             </div>
-            <div className="form-field">
+            {/* <div className="form-field">
               <label>Price Per Day ($)</label>
               <input 
                 type="number" 
@@ -250,7 +265,7 @@ const AddNewBeach = () => {
                 onChange={(e) => setForm({ ...form, pricePerDay: e.target.value })} 
                 placeholder="50.00" 
               />
-            </div>
+            </div> */}
           </div>
 
           <div className="services-section">
@@ -317,7 +332,7 @@ const AddNewBeach = () => {
                     onChange={(e) => setRows(Number(e.target.value) || 1)} 
                     placeholder="Select number of rows"
                   />
-                  <span className="calendar-icon">📅</span>
+                  {/* <span className="calendar-icon">📅</span> */}
                 </div>
               </div>
               <div className="control-field">
@@ -329,7 +344,7 @@ const AddNewBeach = () => {
                     onChange={(e) => setCols(Number(e.target.value) || 1)} 
                     placeholder="Select number of columns"
                   />
-                  <span className="calendar-icon">📅</span>
+                  {/* <span className="calendar-icon">📅</span> */}
                 </div>
               </div>
             </div>
@@ -353,14 +368,14 @@ const AddNewBeach = () => {
                 </div>
                 
                 {/* Action Buttons */}
-                <div className="sunbed-actions">
+                {/* <div className="sunbed-actions">
                   <button className="action-btn assign-btn" type="button">
                     Assign
                   </button>
                   <button className="action-btn remove-btn" type="button">
                     Remove
                   </button>
-                </div>
+                </div> */}
               </div>
             )}
           </div>

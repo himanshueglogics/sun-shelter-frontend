@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import Sidebar from '../components/Sidebar';
 import axios from '../api/axios';
 import { TrendingUp, AlertCircle, DollarSign } from 'lucide-react';
@@ -139,10 +140,10 @@ const ManageFinance = () => {
       setPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'Approved' } : p));
       // Update pending payouts count
       setOverview(prev => ({ ...prev, pendingPayouts: Math.max(0, prev.pendingPayouts - 1) }));
-      alert('Payout approved successfully!');
+      toast.success('Payout approved successfully');
     } catch (e) {
       console.error('Error approving payout:', e);
-      alert('Failed to approve payout');
+      toast.error('Failed to approve payout');
     }
   };
 
@@ -152,10 +153,10 @@ const ManageFinance = () => {
       setPayouts(prev => prev.filter(p => p.id !== id));
       // Update pending payouts count
       setOverview(prev => ({ ...prev, pendingPayouts: Math.max(0, prev.pendingPayouts - 1) }));
-      alert('Payout rejected successfully!');
+      toast.success('Payout rejected successfully');
     } catch (e) {
       console.error('Error rejecting payout:', e);
-      alert('Failed to reject payout');
+      toast.error('Failed to reject payout');
     }
   };
 
@@ -195,7 +196,7 @@ const ManageFinance = () => {
     
     try {
       const response = await axios.post('/finance/seed');
-      alert(`Success! Created ${response.data.financeRecords} finance records and ${response.data.payouts} payouts`);
+      toast.success(`Created ${response.data.financeRecords} finance records and ${response.data.payouts} payouts`);
       // Refresh all sections without blocking the whole page
       fetchOverview();
       fetchPayouts();
@@ -205,7 +206,7 @@ const ManageFinance = () => {
       fetchInsights('');
     } catch (error) {
       console.error('Error seeding data:', error);
-      alert('Failed to seed data: ' + (error.response?.data?.message || error.message));
+      toast.error('Failed to seed data: ' + (error.response?.data?.message || error.message));
     }
   };
 

@@ -11,6 +11,8 @@ import ManageAdmins from './pages/ManageAdmins';
 import ManageIntegrations from './pages/ManageIntegrations';
 import BookingDetail from './pages/BookingDetail';
 import AddNewBeach from './pages/AddNewBeach';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   const isAuthenticated = () => {
@@ -38,6 +40,7 @@ function App() {
         <Route path="/manage-integrations" element={<PrivateRoute><ManageIntegrations /></PrivateRoute>} />
         <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
+      <ToastContainer position="top-right" newestOnTop pauseOnFocusLoss autoClose={3000} />
     </Router>
   );
 }

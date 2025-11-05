@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import './ManagePage.css';
+import { toast } from 'react-toastify';
 
 const ManageBeaches = () => {
   const navigate = useNavigate();
@@ -313,7 +314,7 @@ const ManageBeaches = () => {
                   await fetchBeaches();
                 } catch (err) {
                   console.error('Add admin failed:', err);
-                  alert(err.response?.data?.message || 'Failed to create admin');
+                  toast.error(err.response?.data?.message || 'Failed to create admin');
                 }
               }} className="modal-form">
                 <div className="form-field">

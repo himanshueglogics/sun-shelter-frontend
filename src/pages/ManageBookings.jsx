@@ -5,6 +5,7 @@ import { Edit, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './ManagePage.css';
 import './ManageBookings.css';
+import { toast } from 'react-toastify';
 
 const ManageBookings = () => {
   const navigate = useNavigate();
@@ -93,10 +94,10 @@ const ManageBookings = () => {
       await axios.delete(`/bookings/${deleteConfirm.bookingId}`);
       setDeleteConfirm({ open: false, bookingId: null, customerName: '' });
       await fetchBookings();
-      alert('Booking cancelled successfully!');
+      toast.success('Booking cancelled successfully!');
     } catch (err) {
       console.error('Delete booking failed:', err);
-      alert(err.response?.data?.message || 'Failed to cancel booking');
+      toast.error(err.response?.data?.message || 'Failed to cancel booking');
     }
   };
 
