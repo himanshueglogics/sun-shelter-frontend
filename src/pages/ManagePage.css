@@ -542,3 +542,26 @@
   color: #666;
   font-size: 16px;
 }
+
+/* Add Admin Modal - full width submit button */
+.add-admin-actions {
+  margin-top: 8px;
+  padding-top: 4px;
+}
+
+.add-admin-submit {
+  width: 100%;
+  height: 42px;
+  background: #4A90E2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.add-admin-submit:hover {
+  background: #357abd;
+}

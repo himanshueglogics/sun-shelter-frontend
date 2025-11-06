@@ -93,6 +93,11 @@ const ManageBeaches = () => {
   const createBeach = async (e) => {
     e.preventDefault();
     try {
+      const hasInitialZone = (Number(form.zoneRows) > 0 && Number(form.zoneCols) > 0);
+      if (!hasInitialZone) {
+        toast.error('Please provide initial zone rows and columns (both greater than 0).');
+        return;
+      }
       const payload = {
         name: form.name,
         location: form.location,
@@ -103,13 +108,11 @@ const ManageBeaches = () => {
       };
       const res = await axios.post('/beaches', payload);
       const newBeach = res.data;
-      if (form.zoneName && (form.zoneRows > 0 || form.zoneCols > 0)) {
-        await axios.post(`/beaches/${newBeach._id}/zones`, {
-          name: form.zoneName,
-          rows: Number(form.zoneRows) || 0,
-          cols: Number(form.zoneCols) || 0
-        });
-      }
+      await axios.post(`/beaches/${newBeach._id}/zones`, {
+        name: form.zoneName || `Zone 1`,
+        rows: Number(form.zoneRows) || 0,
+        cols: Number(form.zoneCols) || 0
+      });
       setShowAdd(false);
       setForm({ name: '', location: '', pricePerDay: 0, status: 'active', amenities: [], services: [], zoneName: '', zoneRows: 0, zoneCols: 0 });
       setLoading(true);
@@ -150,7 +153,7 @@ const ManageBeaches = () => {
         <div className="page-header">
           <h1>Beach Management</h1>
           <div className="header-actions">
-            <button className="add-button" onClick={() => setAddAdminModal({ open: true, name: '', email: '', phone: '', role: 'user' })}>
+            <button className="add-button" onClick={() => setAddAdminModal({ open: true, name: '', email: '', phone: '', role: 'User' })}>
               <Plus size={20} />
               <span>Add New Admin</span>
             </button>
@@ -248,7 +251,7 @@ const ManageBeaches = () => {
 
                 <div className="modal-actions">
                   <button type="button" className="btn-secondary" onClick={()=>setShowAdd(false)}>Cancel</button>
-                  <button type="submit" className="btn-primary">Create</button>
+                  <button type="submit" className="btn-primary" disabled={!(Number(form.zoneRows) > 0 && Number(form.zoneCols) > 0)}>Create</button>
                 </div>
               </form>
             </div>
@@ -312,19 +315,20 @@ const ManageBeaches = () => {
           <div className="modal-overlay">
             <div className="modal add-admin-modal">
               <h3>Add New Beach Admin</h3>
-              <p className="modal-subtitle">Fill out the details to add a new admin</p>
+              <p className="modal-subtitle">Fill out the details to add a new admin.</p>
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 try {
+                  const roleForBackend = (addAdminModal.role || 'User').toLowerCase() === 'user' ? 'admin' : (addAdminModal.role || 'admin');
                   const payload = {
                     name: addAdminModal.name,
                     email: addAdminModal.email,
                     phone: addAdminModal.phone,
-                    password: addAdminModal.password || 'TempPassword123!',
-                    role: addAdminModal.role
+                    password: 'TempPassword123!',
+                    role: roleForBackend
                   };
                   await axios.post('/admins', payload);
-                  setAddAdminModal({ open: false, name: '', email: '', phone: '', password: '', role: 'user' });
+                  setAddAdminModal({ open: false, name: '', email: '', phone: '', role: 'User' });
                   await fetchBeaches();
                 } catch (err) {
                   console.error('Add admin failed:', err);
@@ -341,27 +345,17 @@ const ManageBeaches = () => {
                 </div>
                 <div className="form-field">
                   <label>Phone Number</label>
-                  <input type="tel" value={addAdminModal.phone} onChange={(e)=>setAddAdminModal(m=>({...m,phone:e.target.value}))} placeholder="+1 234 567 8900" />
-                </div>
-                <div className="form-field">
-                  <label>Password</label>
-                  <input 
-                    type="password" 
-                    value={addAdminModal.password} 
-                    onChange={(e)=>setAddAdminModal(m=>({...m,password:e.target.value}))} 
-                    placeholder="Leave blank for default password"
-                    minLength="6"
-                  />
+                  <input type="tel" value={addAdminModal.phone} onChange={(e)=>setAddAdminModal(m=>({...m,phone:e.target.value}))} placeholder="Enter phone number" />
                 </div>
                 <div className="form-field">
                   <label>Select Role</label>
-                  <select value={addAdminModal.role} onChange={(e)=>setAddAdminModal(m=>({...m,role:e.target.value}))}>
-                    <option value="admin">Admin</option>
+                  <select value={addAdminModal.role || 'User'} onChange={(e)=>setAddAdminModal(m=>({...m,role:e.target.value}))}>
+                    <option>User</option>
+                    <option>Admin</option>
                   </select>
                 </div>
-                <div className="modal-actions">
-                  <button type="button" className="btn-secondary" onClick={()=>setAddAdminModal({ open: false, name: '', email: '', phone: '', password: '', role: 'Admin' })}>Cancel</button>
-                  <button type="submit" className="btn-primary">Add Admin</button>
+                <div className="modal-actions add-admin-actions">
+                  <button type="submit" className="btn-primary add-admin-submit">Add Admin</button>
                 </div>
               </form>
             </div>

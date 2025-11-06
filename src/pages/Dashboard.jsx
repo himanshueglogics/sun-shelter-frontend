@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { MapPin, TrendingUp, Calendar, Bell, RotateCcw, AlertTriangle, CheckCircle } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
@@ -65,6 +65,26 @@ const Dashboard = () => {
     await fetchDashboardData();
   };
 
+  // Calculate average occupancy dynamically from beach occupancy data
+  const averageOccupancy = useMemo(() => {
+    if (!stats?.beachOccupancy || stats.beachOccupancy.length === 0) {
+      return stats?.avgOccupancy || '78%';
+    }
+    
+    const total = stats.beachOccupancy.reduce((sum, beach) => sum + (beach.occupancyRate || 0), 0);
+    const avg = Math.round(total / stats.beachOccupancy.length);
+    return `${avg}%`;
+  }, [stats?.beachOccupancy, stats?.avgOccupancy]);
+
+  // Calculate occupancy change compared to baseline (if available from stats)
+  const occupancyChange = useMemo(() => {
+    if (stats?.occupancyChange) {
+      return stats.occupancyChange;
+    }
+    // Default fallback
+    return '+5%';
+  }, [stats?.occupancyChange]);
+
   if (loading) {
     return (
       <div className="dashboard-layout">
@@ -112,6 +132,7 @@ const Dashboard = () => {
     return `${Math.floor(diffInMinutes / 1440)} day${Math.floor(diffInMinutes / 1440) > 1 ? 's' : ''} ago`;
   };
 
+
   return (
     <div className="dashboard-layout">
       <Sidebar />
@@ -138,8 +159,8 @@ const Dashboard = () => {
             </div>
             <div className="stat-info">
               <div className="stat-label">Average Occupancy</div>
-              <div className="stat-value">{stats?.avgOccupancy || '78%'}</div>
-              <div className="stat-change positive">{stats?.occupancyChange || '+5%'} compared to last year</div>
+              <div className="stat-value">{averageOccupancy}</div>
+              <div className="stat-change positive">{occupancyChange} compared to last year</div>
             </div>
           </div>
 

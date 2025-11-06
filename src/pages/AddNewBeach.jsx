@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import axios from '../api/axios';
-import { ChevronLeft, Plus, X, Umbrella } from 'lucide-react';
+import { ChevronLeft, Plus, X, Umbrella, Rows } from 'lucide-react';
 import './AddNewBeach.css';
 import { toast } from 'react-toastify';
 import { joinBeach, leaveBeach, getSocket } from '../services/socket';
 
 const AddNewBeach = () => {
   const navigate = useNavigate();
-  const { id } = useParams(); // Get beach ID from URL if editing
+  const { id } = useParams();
   const isEditMode = Boolean(id);
   const [form, setForm] = useState({
     name: '',
@@ -20,11 +20,10 @@ const AddNewBeach = () => {
   });
   const [zones, setZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState(null);
-  const [rows, setRows] = useState(5);
-  const [cols, setCols] = useState(15);
+  const [rows, setRows] = useState(0);
+  const [cols, setCols] = useState(0);
   const [sunbeds, setSunbeds] = useState([]);
   const [imagePreview, setImagePreview] = useState(null);
-  // Live occupancy metrics
   const [occupancyRate, setOccupancyRate] = useState(0);
   const [totalCapacity, setTotalCapacity] = useState(0);
   const [currentBookings, setCurrentBookings] = useState(0);
@@ -97,8 +96,18 @@ const AddNewBeach = () => {
       if (beach.zones && beach.zones.length > 0) {
         setZones(beach.zones);
         // Default to first zone if none selected
-        const firstZoneId = beach.zones[0]?._id || beach.zones[0]?.id;
+        const firstZone = beach.zones[0];
+        const firstZoneId = firstZone?._id || firstZone?.id;
         setSelectedZone(prev => prev || firstZoneId);
+        
+        // Immediately set rows/cols from first zone to avoid showing 0
+        if (firstZone) {
+          setRows(firstZone.rows || 0);
+          setCols(firstZone.cols || 0);
+          if (firstZone.sunbeds && firstZone.sunbeds.length > 0) {
+            setSunbeds(firstZone.sunbeds);
+          }
+        }
       }
       if (beach.image) {
         setImagePreview(beach.image);
@@ -119,8 +128,9 @@ const AddNewBeach = () => {
   };
 
   const addZone = () => {
-    const newZone = { id: Date.now(), name: `Zone ${zones.length + 1}`, rows: 0, cols: 0, sunbeds: [] };
+    const newZone = { id: Date.now(), name: `Zone ${zones.length + 1}`, rows: 5, cols: 15, sunbeds: [] };
     setZones([...zones, newZone]);
+    setSelectedZone(newZone.id);
   };
 
   const removeZone = (id) => {
@@ -141,28 +151,32 @@ const AddNewBeach = () => {
     setZones(zones.map(z => z.id === selectedZone ? { ...z, rows, cols, sunbeds: beds } : z));
   };
 
-  // When selectedZone changes or zones load, set rows/cols and sunbeds from backend zone data (edit mode)
+  // When selectedZone changes, set rows/cols and sunbeds from that zone's data
   useEffect(() => {
     if (!selectedZone) return;
     const z = zones.find(zz => String(zz._id || zz.id) === String(selectedZone));
     if (z) {
-      setRows(z.rows || rows);
-      setCols(z.cols || cols);
+      // Always use zone's actual rows/cols values
+      setRows(z.rows || 0);
+      setCols(z.cols || 0);
+      
       if (Array.isArray(z.sunbeds) && z.sunbeds.length > 0) {
         // Use backend-provided sunbeds when present
         setSunbeds(z.sunbeds);
-      } else if (rows > 0 && cols > 0) {
+      } else if (z.rows > 0 && z.cols > 0) {
         // Fallback generator for new zones without saved beds
         const beds = [];
-        for (let r = 1; r <= (z.rows || rows); r++) {
-          for (let c = 1; c <= (z.cols || cols); c++) {
+        for (let r = 1; r <= z.rows; r++) {
+          for (let c = 1; c <= z.cols; c++) {
             beds.push({ row: r, col: c, status: 'available', code: `R${r}C${c}` });
           }
         }
         setSunbeds(beds);
+      } else {
+        setSunbeds([]);
       }
     }
-  }, [selectedZone, JSON.stringify(zones)]);
+  }, [selectedZone]);
 
   // Ensure sunbeds are visible when creating a new beach or no zone/back-end data yet
   useEffect(() => {
@@ -190,70 +204,48 @@ const AddNewBeach = () => {
       if (selectedZone) {
         setZones(prev => prev.map(zz => String(zz._id || zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: [] } : zz));
       }
-      if (isEditMode && id && selectedZone) {
-        const timer = setTimeout(async () => {
-          try {
-            const res = await axios.put(`/beaches/${id}/zones/${selectedZone}`, { rows, cols });
-            const updated = res.data;
-            const updatedZone = (updated.zones || []).find(zz => String(zz._id || zz.id) === String(selectedZone));
-            if (updatedZone) {
-              setZones(updated.zones);
-              setSunbeds([]);
-            }
-          } catch (_) {}
-        }, 200);
-        return () => clearTimeout(timer);
-      }
       return; // nothing else to do when 0 clears
     }
 
-    if (isEditMode && id && selectedZone) {
-      // Persist new layout to backend and use returned sunbeds
-      const timer = setTimeout(async () => {
-        try {
-          const res = await axios.put(`/beaches/${id}/zones/${selectedZone}`, { rows, cols });
-          const updated = res.data;
-          const updatedZone = (updated.zones || []).find(zz => String(zz._id || zz.id) === String(selectedZone));
-          if (updatedZone) {
-            setZones(updated.zones);
-            setSunbeds(Array.isArray(updatedZone.sunbeds) ? updatedZone.sunbeds : []);
-          }
-        } catch (e) {
-          // no-op
-        }
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      // Local generation for new beach
-      const beds = [];
-      for (let r = 1; r <= rows; r++) {
-        for (let c = 1; c <= cols; c++) {
-          beds.push({ row: r, col: c, status: 'available', code: `R${r}C${c}` });
-        }
+    // Keep layout changes local (no backend write until Save)
+    const beds = [];
+    for (let r = 1; r <= rows; r++) {
+      for (let c = 1; c <= cols; c++) {
+        beds.push({ row: r, col: c, status: 'available', code: `R${r}C${c}` });
       }
-      setSunbeds(beds);
-      if (selectedZone) {
-        setZones(prev => prev.map(zz => String(zz._id || zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: beds } : zz));
-      }
+    }
+    setSunbeds(beds);
+    if (selectedZone) {
+      setZones(prev => prev.map(zz => String(zz._id || zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: beds } : zz));
     }
   }, [rows, cols, selectedZone, isEditMode, id]);
 
   const toggleSunbed = (row, col) => {
     // Support both backend beds (with _id) and generated ones (row/col)
-    setSunbeds(prev => prev.map(b => {
-      const isTarget = (b.row === row && b.col === col);
-      if (isTarget) {
-        // Disallow interaction for locked states, including previously selected
-        if (b.status === 'reserved' || b.status === 'unavailable' || b.status === 'selected') return b;
-        const nextStatus = 'selected';
-        // Persist to backend in edit mode when we have IDs
-        if (isEditMode && id && selectedZone && b._id) {
-          axios.put(`/beaches/${id}/zones/${selectedZone}/sunbeds/${b._id}`, { status: nextStatus }).catch(() => {});
+    setSunbeds(prev => {
+      const updated = prev.map(b => {
+        const isTarget = (b.row === row && b.col === col);
+        if (isTarget) {
+          // Disallow interaction for locked states
+          if (b.status === 'reserved' || b.status === 'unavailable') return b;
+          // Toggle between available <-> selected
+          const nextStatus = b.status === 'selected' ? 'available' : 'selected';
+          return { ...b, status: nextStatus };
         }
-        return { ...b, status: nextStatus };
+        return b;
+      });
+      
+      // Also update the zones array with the new sunbed data
+      if (selectedZone) {
+        setZones(prev => prev.map(z => 
+          String(z._id || z.id) === String(selectedZone) 
+            ? { ...z, sunbeds: updated }
+            : z
+        ));
       }
-      return b;
-    }));
+      
+      return updated;
+    });
   };
 
   const handleImageUpload = (e) => {
@@ -267,6 +259,13 @@ const AddNewBeach = () => {
 
   const saveBeach = async () => {
     try {
+      if (!isEditMode) {
+        const hasValidZone = Array.isArray(zones) && zones.some(z => Number(z.rows) > 0 && Number(z.cols) > 0);
+        if (!hasValidZone) {
+          toast.error('Please add at least one zone with rows and columns before creating the beach.');
+          return;
+        }
+      }
       const payload = {
         name: form.name,
         location: form.location,
@@ -280,19 +279,11 @@ const AddNewBeach = () => {
         // Update existing beach
         await axios.put(`/beaches/${id}`, payload);
         beachId = id;
-        toast.success('Beach updated successfully!');
-      } else {
-        // Create new beach
-        const res = await axios.post('/beaches', payload);
-        beachId = res.data._id;
-        toast.success('Beach created successfully!');
-      }
-      
-      // Create/update zones (only for new beaches or if zones changed)
-      if (!isEditMode) {
+        
+        // Update zones with current sunbed state
         for (const zone of zones) {
-          if (zone.sunbeds.length > 0) {
-            await axios.post(`/beaches/${beachId}/zones`, {
+          if (zone._id && zone.sunbeds && zone.sunbeds.length > 0) {
+            await axios.put(`/beaches/${beachId}/zones/${zone._id}`, {
               name: zone.name,
               rows: zone.rows,
               cols: zone.cols,
@@ -300,6 +291,31 @@ const AddNewBeach = () => {
             });
           }
         }
+        console.log(zones)
+        toast.success('Beach updated successfully!');
+      } else {
+        // Create new beach
+        console.log(zones)
+        if (zones.length === 0) {
+          toast.error('Please add at least one zone before creating the beach.');
+          return;
+        }
+        const res = await axios.post('/beaches', payload);
+        beachId = res.data._id;
+        
+        // Create zones with sunbed data
+        for (const zone of zones) {
+          if (zone.rows > 0 && zone.cols > 0) {
+            await axios.post(`/beaches/${beachId}/zones`, {
+              name: zone.name,
+              rows: zone.rows,
+              cols: zone.cols,
+              sunbeds: zone.sunbeds || []
+            });
+          }
+        }
+        
+        toast.success('Beach created successfully!');
       }
       
       navigate('/manage-beaches');
@@ -457,7 +473,7 @@ const AddNewBeach = () => {
                   <input 
                     type="text" 
                     value={rows} 
-                    onChange={(e) => setRows(Number(e.target.value) || 0)} 
+                    onChange={(e) => setRows(Number(e.target.value) )} 
                     placeholder="Select number of rows"
                   />
                   <span className="calendar-icon">📅</span>
@@ -469,7 +485,7 @@ const AddNewBeach = () => {
                   <input 
                     type="text" 
                     value={cols} 
-                    onChange={(e) => setCols(Number(e.target.value) || 0)} 
+                    onChange={(e) => setCols(Number(e.target.value))} 
                     placeholder="Select number of columns"
                   />
                   <span className="calendar-icon">📅</span>
@@ -500,7 +516,7 @@ const AddNewBeach = () => {
 
           <div className="form-actions">
             <button className="btn-secondary" onClick={() => navigate('/manage-beaches')}>Cancel</button>
-            <button className="btn-primary" onClick={saveBeach}>
+            <button className="btn-primary" onClick={saveBeach} disabled={!isEditMode && !(Array.isArray(zones) && zones.some(z => Number(z.rows) > 0 && Number(z.cols) > 0))}>
               {isEditMode ? 'Update Beach' : 'Save Beach'}
             </button>
           </div>
