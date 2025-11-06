@@ -6,6 +6,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { useNavigate } from 'react-router-dom';
 import './ManagePage.css';
 import { toast } from 'react-toastify';
+import { getSocket, joinBeach } from '../services/socket';
 
 const ManageBeaches = () => {
   const navigate = useNavigate();
@@ -38,24 +39,52 @@ const ManageBeaches = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
+  // Socket subscription for real-time occupancy updates
+  useEffect(() => {
+    const s = getSocket();
+    const handler = (payload) => {
+      if (!payload || !payload.beachId) return;
+      setOccupancy(prev => {
+        const idx = prev.findIndex(x => String(x._id || x.beachId) === String(payload.beachId));
+        if (idx !== -1) {
+          const copy = [...prev];
+          copy[idx] = { ...copy[idx], occupancy: payload.occupancyRate };
+          return copy;
+        }
+        const b = beaches.find(bb => String(bb._id) === String(payload.beachId));
+        const name = b?.name || `Beach ${payload.beachId.substring(0,4)}`;
+        return [...prev, { _id: payload.beachId, name, occupancy: payload.occupancyRate }];
+      });
+    };
+    s.on('beach:occupancy', handler);
+    return () => {
+      s.off('beach:occupancy', handler);
+    };
+  }, []);
+
   const fetchBeaches = async () => {
     try {
       const response = await axios.get('/beaches', { params: { page, limit: 10 } });
-      setBeaches(response.data.items || []);
-      setPages(response.data.pages || 1);
-      setTotal(response.data.total || 0);
+      // Backend now returns: { beaches, currentPage, totalPages, totalBeaches }
+      setBeaches(response.data.beaches || []);
+      setPages(response.data.totalPages || 1);
+      setTotal(response.data.totalBeaches || 0);
       const s = await axios.get('/beaches/stats/summary');
       setStats(s.data || { totalBeaches: 0, activeAdmins: 0 });
       const a = await axios.get('/admins');
       setAdmins(a.data || []);
       try {
         const occ = await axios.get('/beaches/occupancy-overview');
-        setOccupancy(Array.isArray(occ.data) ? occ.data : []);
+        const list = Array.isArray(occ.data) ? occ.data : [];
+        setOccupancy(list);
+        // Join socket rooms for these beaches to receive updates
+        (response.data.beaches || []).forEach(b => joinBeach(b._id));
       } catch (e) {
         setOccupancy([]);
       }
     } catch (error) {
       console.error('Error fetching beaches:', error);
+      toast.error('Failed to fetch beaches');
     } finally {
       setLoading(false);
     }
@@ -147,22 +176,7 @@ const ManageBeaches = () => {
           </div>
         </div>
 
-        {Array.isArray(occupancy) && occupancy.length > 0 && (
-          <div className="table-container" style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: '#1a1a1a' }}>Beach Occupancy Overview</h3>
-            </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={occupancy}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <YAxis unit="%" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <Tooltip />
-                <Bar dataKey="occupancy" fill="#4A90E2" radius={[4,4,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+      
 
         {showAdd && (
           <div className="modal-overlay">

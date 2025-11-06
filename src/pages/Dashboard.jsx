@@ -4,6 +4,7 @@ import { MapPin, TrendingUp, Calendar, Bell, RotateCcw, AlertTriangle, CheckCirc
 import Sidebar from '../components/Sidebar';
 import axios from '../api/axios';
 import './Dashboard.css';
+import { getSocket } from '../services/socket';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -16,6 +17,31 @@ const Dashboard = () => {
     fetchDashboardData();
     const id = setInterval(fetchDashboardData, 10000);
     return () => clearInterval(id);
+  }, []);
+
+  // Live-update occupancy from socket events
+  useEffect(() => {
+    const s = getSocket();
+    const onOccupancy = (payload) => {
+      if (!payload) return;
+      setStats((prev) => {
+        if (!prev) return prev;
+        const list = Array.isArray(prev.beachOccupancy) ? [...prev.beachOccupancy] : [];
+        const idx = list.findIndex((b) => String(b.beachId || b._id) === String(payload.beachId));
+        const nextItem = {
+          ...(idx >= 0 ? list[idx] : {}),
+          beachId: payload.beachId,
+          name: payload.name || (idx >= 0 ? list[idx].name : 'Unknown Beach'),
+          occupancyRate: payload.occupancyRate,
+        };
+        if (idx >= 0) list[idx] = nextItem; else list.push(nextItem);
+        return { ...prev, beachOccupancy: list };
+      });
+    };
+    s.on('beach:occupancy', onOccupancy);
+    return () => {
+      s.off('beach:occupancy', onOccupancy);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
@@ -176,7 +202,8 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="occupancy-list">
-              {stats?.beachOccupancy?.map((beach, index) => (
+              {console.log(stats)}
+              {stats.beachOccupancy.map((beach, index) => (
                 <div key={index} className="occupancy-item">
                   <div className="occupancy-info">
                     <span className="beach-name">{beach.name}</span>
@@ -189,55 +216,7 @@ const Dashboard = () => {
                     ></div>
                   </div>
                 </div>
-              )) || (
-                <>
-                  <div className="occupancy-item">
-                    <div className="occupancy-info">
-                      <span className="beach-name">Sunset Cove</span>
-                      <span className="occupancy-rate">92%</span>
-                    </div>
-                    <div className="occupancy-bar">
-                      <div className="occupancy-fill" style={{ width: '92%' }}></div>
-                    </div>
-                  </div>
-                  <div className="occupancy-item">
-                    <div className="occupancy-info">
-                      <span className="beach-name">Malibu Beach</span>
-                      <span className="occupancy-rate">75%</span>
-                    </div>
-                    <div className="occupancy-bar">
-                      <div className="occupancy-fill" style={{ width: '75%' }}></div>
-                    </div>
-                  </div>
-                  <div className="occupancy-item">
-                    <div className="occupancy-info">
-                      <span className="beach-name">Coral Reef</span>
-                      <span className="occupancy-rate">60%</span>
-                    </div>
-                    <div className="occupancy-bar">
-                      <div className="occupancy-fill" style={{ width: '60%' }}></div>
-                    </div>
-                  </div>
-                  <div className="occupancy-item">
-                    <div className="occupancy-info">
-                      <span className="beach-name">Golden Sands</span>
-                      <span className="occupancy-rate">88%</span>
-                    </div>
-                    <div className="occupancy-bar">
-                      <div className="occupancy-fill" style={{ width: '88%' }}></div>
-                    </div>
-                  </div>
-                  <div className="occupancy-item">
-                    <div className="occupancy-info">
-                      <span className="beach-name">Blue Lagoon</span>
-                      <span className="occupancy-rate">81%</span>
-                    </div>
-                    <div className="occupancy-bar">
-                      <div className="occupancy-fill" style={{ width: '81%' }}></div>
-                    </div>
-                  </div>
-                </>
-              )}
+              )) }
             </div>
           </div>
         </div>
