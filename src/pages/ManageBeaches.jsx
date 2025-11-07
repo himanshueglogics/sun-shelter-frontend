@@ -31,8 +31,10 @@ const ManageBeaches = () => {
     zoneRows: 0,
     zoneCols: 0
   });
-  const [assignModal, setAssignModal] = useState({ open: false, beachId: null, beachName: '', userId: '', role: '', grantAdmin: false });
+  const [assignModal, setAssignModal] = useState({ open: false, beachId: null, beachName: '', userId: '', userIds: [], role: '', grantAdmin: false });
   const [addAdminModal, setAddAdminModal] = useState({ open: false, name: '', email: '', phone: '', password: '', role: 'Admin' });
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [adminSearch, setAdminSearch] = useState('');
 
   useEffect(() => {
     fetchBeaches();
@@ -52,7 +54,7 @@ const ManageBeaches = () => {
           return copy;
         }
         const b = beaches.find(bb => String(bb._id) === String(payload.beachId));
-        const name = b?.name || `Beach ${payload.beachId.substring(0,4)}`;
+        const name = b?.name || `Beach ${payload.beachId.substring(0, 4)}`;
         return [...prev, { _id: payload.beachId, name, occupancy: payload.occupancyRate }];
       });
     };
@@ -122,14 +124,25 @@ const ManageBeaches = () => {
     }
   };
 
-  const openAssign = (beach) => setAssignModal({ open: true, beachId: beach._id, beachName: beach.name, userId: '', role: '', grantAdmin: false });
+  const openAssign = (beach) => setAssignModal({ open: true, beachId: beach._id, beachName: beach.name, userId: '', userIds: [], role: '', grantAdmin: false });
   const closeAssign = () => setAssignModal({ open: false, beachId: null, beachName: '', userId: '', role: '', grantAdmin: false });
   const assignAdmin = async (e) => {
     e.preventDefault();
-    if (!assignModal.userId) return;
+    const payload = Array.isArray(assignModal.userIds) && assignModal.userIds.length > 0
+      ? { userIds: assignModal.userIds }
+      : (assignModal.userId ? { userId: assignModal.userId } : null);
+    if (!payload) return;
     try {
-      await axios.post(`/beaches/${assignModal.beachId}/admins`, { userId: assignModal.userId });
-      toast.success('Admin assigned successfully');
+      const res = await axios.post(`/beaches/${assignModal.beachId}/admins`, payload);
+      const data = res.data || {};
+      if (Array.isArray(data.assigned) || Array.isArray(data.skipped)) {
+        const assignedCount = (data.assigned || []).length;
+        const skippedCount = (data.skipped || []).length;
+        if (assignedCount > 0) toast.success(`Assigned ${assignedCount} admin(s)`);
+        if (skippedCount > 0) toast.info(`Skipped ${skippedCount} admin(s)`);
+      } else {
+        toast.success('Admin assigned successfully');
+      }
       closeAssign();
       await fetchBeaches();
     } catch (err) {
@@ -178,28 +191,28 @@ const ManageBeaches = () => {
           </div>
         </div>
 
-      
+
 
         {showAdd && (
           <div className="modal-overlay">
-            
+
             <div className="modal">
-            <h3>Add New Beach</h3>
+              <h3>Add New Beach</h3>
               <form onSubmit={createBeach} className="modal-form">
-                
+
                 <div className="form-grid">
-                  
+
                   <label>
                     <span>Beach Name</span>
-                    <input value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} required />
+                    <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                   </label>
                   <label>
                     <span>Location</span>
-                    <input value={form.location} onChange={(e)=>setForm({...form,location:e.target.value})} required />
+                    <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} required />
                   </label>
                   <label>
                     <span>Status</span>
-                    <select value={form.status} onChange={(e)=>setForm({...form,status:e.target.value})}>
+                    <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                       <option value="maintenance">Maintenance</option>
@@ -207,23 +220,23 @@ const ManageBeaches = () => {
                   </label>
                   <label>
                     <span>Price/Day ($)</span>
-                    <input type="number" min="0" value={form.pricePerDay} onChange={(e)=>setForm({...form,pricePerDay:e.target.value})} required />
+                    <input type="number" min="0" value={form.pricePerDay} onChange={(e) => setForm({ ...form, pricePerDay: e.target.value })} required />
                   </label>
                 </div>
 
                 <div className="section">
                   <h4>Services</h4>
                   <div className="checkbox-grid">
-                    {['Parking','Bars','Wheelchair Accessible','Water Sports','Lifeguard','Restaurants','Blue Flag'].map(s => (
+                    {['Parking', 'Bars', 'Wheelchair Accessible', 'Water Sports', 'Lifeguard', 'Restaurants', 'Blue Flag'].map(s => (
                       <label key={s} className="checkbox-item">
                         <input
                           type="checkbox"
                           checked={form.services.includes(s)}
-                          onChange={(e)=>{
+                          onChange={(e) => {
                             const checked = e.target.checked;
                             setForm(prev => ({
                               ...prev,
-                              services: checked ? [...prev.services, s] : prev.services.filter(x=>x!==s)
+                              services: checked ? [...prev.services, s] : prev.services.filter(x => x !== s)
                             }));
                           }}
                         />
@@ -238,21 +251,21 @@ const ManageBeaches = () => {
                   <div className="form-grid">
                     <label>
                       <span>Zone Name</span>
-                      <input value={form.zoneName} onChange={(e)=>setForm({...form,zoneName:e.target.value})} />
+                      <input value={form.zoneName} onChange={(e) => setForm({ ...form, zoneName: e.target.value })} />
                     </label>
                     <label>
                       <span>Rows</span>
-                      <input type="number" min="0" value={form.zoneRows} onChange={(e)=>setForm({...form,zoneRows:e.target.value})} />
+                      <input type="number" min="0" value={form.zoneRows} onChange={(e) => setForm({ ...form, zoneRows: e.target.value })} />
                     </label>
                     <label>
                       <span>Cols</span>
-                      <input type="number" min="0" value={form.zoneCols} onChange={(e)=>setForm({...form,zoneCols:e.target.value})} />
+                      <input type="number" min="0" value={form.zoneCols} onChange={(e) => setForm({ ...form, zoneCols: e.target.value })} />
                     </label>
                   </div>
                 </div>
 
                 <div className="modal-actions">
-                  <button type="button" className="btn-secondary" onClick={()=>setShowAdd(false)}>Cancel</button>
+                  <button type="button" className="btn-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
                   <button type="submit" className="btn-primary" disabled={!(Number(form.zoneRows) > 0 && Number(form.zoneCols) > 0)}>Create</button>
                 </div>
               </form>
@@ -272,23 +285,61 @@ const ManageBeaches = () => {
                 </div>
                 <div className="form-field">
                   <label>Select Admin User</label>
-                  <select value={assignModal.userId} onChange={(e)=>setAssignModal(m=>({...m,userId:e.target.value}))} required>
-                    <option value="">Select a user</option>
-                    {admins.map(u => (
-                      <option key={u._id} value={u._id}>{u.name} - {u.email}</option>
-                    ))}
-                  </select>
+                  <div className="custom-select-wrapper">
+                    <div className="custom-select-trigger" onClick={()=>setShowUserDropdown(s=>!s)}>
+                      {assignModal.userIds.length > 0 && !adminSearch ? (
+                        <span>{`${assignModal.userIds.length} user(s) selected`}</span>
+                      ) : (
+                        <input
+                          type="text"
+                          value={adminSearch}
+                          onChange={(e)=>{ setAdminSearch(e.target.value); if (!showUserDropdown) setShowUserDropdown(true); }}
+                          onFocus={()=>setShowUserDropdown(true)}
+                          placeholder="Select a user" className='custom-search-user'
+                        />
+                      )}
+                      <span className="dropdown-arrow">▼</span>
+                    </div>
+                    {showUserDropdown && (
+                      <div className="custom-select-dropdown">
+                        {admins
+                          .filter(u => {
+                            const q = adminSearch.trim().toLowerCase();
+                            if (!q) return true;
+                            return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+                          })
+                          .map(u => (
+                          <label key={u._id} className="custom-select-option">
+                            <input
+                              type="checkbox"
+                              checked={assignModal.userIds.includes(u._id)}
+                              onChange={(e)=>{
+                                const checked = e.target.checked;
+                                setAssignModal(m=>({
+                                  ...m,
+                                  userIds: checked 
+                                    ? [...m.userIds, u._id]
+                                    : m.userIds.filter(id=>id!==u._id)
+                                }));
+                              }}
+                            />
+                            <span>{u.name} - {u.email}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="form-field">
                   <label>Assign Role</label>
-                  <select value={assignModal.role} onChange={(e)=>setAssignModal(m=>({...m,role:e.target.value}))}>
+                  <select value={assignModal.role} onChange={(e) => setAssignModal(m => ({ ...m, role: e.target.value }))}>
                     <option value="">Select a role</option>
                     <option value="manager">Manager</option>
                     <option value="staff">Staff</option>
                   </select>
                 </div>
                 <div className="checkbox-field">
-                  <input type="checkbox" id="grantAdmin" checked={assignModal.grantAdmin} onChange={(e)=>setAssignModal(m=>({...m,grantAdmin:e.target.checked}))} />
+                  <input type="checkbox" id="grantAdmin" checked={assignModal.grantAdmin} onChange={(e) => setAssignModal(m => ({ ...m, grantAdmin: e.target.checked }))} />
                   <label htmlFor="grantAdmin">Grant full administrative access</label>
                 </div>
                 <div className="modal-actions">
@@ -340,25 +391,26 @@ const ManageBeaches = () => {
               }} className="modal-form">
                 <div className="form-field">
                   <label>Name</label>
-                  <input value={addAdminModal.name} onChange={(e)=>setAddAdminModal(m=>({...m,name:e.target.value}))} placeholder="Enter name" required />
+                  <input value={addAdminModal.name} onChange={(e) => setAddAdminModal(m => ({ ...m, name: e.target.value }))} placeholder="Enter name" required />
                 </div>
                 <div className="form-field">
                   <label>Email</label>
-                  <input type="email" value={addAdminModal.email} onChange={(e)=>setAddAdminModal(m=>({...m,email:e.target.value}))} placeholder="Enter email" required />
+                  <input type="email" value={addAdminModal.email} onChange={(e) => setAddAdminModal(m => ({ ...m, email: e.target.value }))} placeholder="Enter email" required />
                 </div>
                 <div className="form-field">
                   <label>Phone Number</label>
-                  <input type="tel" value={addAdminModal.phone} onChange={(e)=>setAddAdminModal(m=>({...m,phone:e.target.value}))} placeholder="Enter phone number" />
+                  <input type="tel" value={addAdminModal.phone} onChange={(e) => setAddAdminModal(m => ({ ...m, phone: e.target.value }))} placeholder="Enter phone number" />
                 </div>
                 <div className="form-field">
                   <label>Select Role</label>
-                  <select value={addAdminModal.role || 'User'} onChange={(e)=>setAddAdminModal(m=>({...m,role:e.target.value}))}>
+                  <select value={addAdminModal.role || 'User'} onChange={(e) => setAddAdminModal(m => ({ ...m, role: e.target.value }))}>
                     <option>User</option>
                     <option>Admin</option>
                   </select>
                 </div>
-                <div className="modal-actions add-admin-actions">
-                  <button type="submit" className="btn-primary add-admin-submit">Add Admin</button>
+                <div className="modal-actions">
+                  <button type="button" className="btn-secondary" onClick={() => setAddAdminModal({ open: false, name: '', email: '', phone: '', role: 'User' })}>Cancel</button>
+                  <button type="submit" className="btn-primary">Add Admin</button>
                 </div>
               </form>
             </div>
@@ -400,7 +452,7 @@ const ManageBeaches = () => {
                       <td>{beach.location}</td>
                       <td>
                         <div className="avatars">
-                          {(beach.admins || []).slice(0,3).map((u) => (
+                          {(beach.admins || []).slice(0, 3).map((u) => (
                             <img key={u._id} className="avatar" alt={u.name}
                               src={`https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'Admin')}&background=4A90E2&color=fff`} />
                           ))}
@@ -419,7 +471,7 @@ const ManageBeaches = () => {
                       </td>
                       <td>
                         <div className="action-buttons">
-                          <button className="btn-assign" onClick={()=>openAssign(beach)}>Assign Admin</button>
+                          <button className="btn-assign" onClick={() => openAssign(beach)}>Assign Admin</button>
                           <button className="icon-button danger" onClick={() => setDeleteConfirm({ open: true, beachId: beach._id, beachName: beach.name })}>
                             <Trash2 size={18} />
                           </button>
@@ -438,7 +490,7 @@ const ManageBeaches = () => {
               </tbody>
             </table>
             <div className="pagination-new">
-              <button className="pagination-arrow" disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))}>
+              <button className="pagination-arrow" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
                 <span>‹</span> Previous
               </button>
               {Array.from({ length: Math.min(pages, 5) }, (_, i) => {
@@ -453,8 +505,8 @@ const ManageBeaches = () => {
                   </button>
                 );
               })}
-              <button className="pagination-arrow" disabled={page>=pages} onClick={()=>setPage(p=>Math.min(pages,p+1))}>
-                 <span>Next›</span>
+              <button className="pagination-arrow" disabled={page >= pages} onClick={() => setPage(p => Math.min(pages, p + 1))}>
+                <span>Next›</span>
               </button>
             </div>
           </div>

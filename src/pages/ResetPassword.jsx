@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from '../api/axios';
 import './ResetPassword.css';
@@ -11,6 +11,20 @@ const ResetPassword = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Validate token on mount
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        await axios.get(`/auth/validate-reset/${token}`);
+      } catch (err) {
+        if (!isMounted) return;
+        navigate('/signin', { replace: true });
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [token, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
