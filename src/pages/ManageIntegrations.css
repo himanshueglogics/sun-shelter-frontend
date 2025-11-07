@@ -366,7 +366,7 @@ input:checked + .slider:before {
 .language-cards {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 20px;
   margin-bottom: 32px;
 }
 
@@ -681,4 +681,40 @@ input:checked + .slider:before {
   font-size: 13px;
   color: #374151;
   border-bottom: 1px solid #f3f4f6;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .integration-grid,
+  .payment-cards,
+  .revenue-grid,
+  .language-cards,
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .occupancy-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 992px) {
+  .integrations-content,
+  .reports-content { padding: 20px; }
+  .section-header { margin: 24px 0 12px; }
+  .tabs { flex-wrap: wrap; }
+}
+
+@media (max-width: 768px) {
+  .integrations-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .integration-grid,
+  .payment-cards,
+  .language-cards,
+  .revenue-grid,
+  .kpi-grid { grid-template-columns: 1fr; }
+  .integrations-content,
+  .reports-content,
+  .payout-section,
+  .insights-section { overflow-x: auto; }
+  .legal-table,
+  .error-table,
+  .payout-table,
+  .transactions-table { min-width: 720px; }
 }

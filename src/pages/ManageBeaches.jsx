@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import axios from '../api/axios';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Building2 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import './ManagePage.css';
@@ -129,10 +129,12 @@ const ManageBeaches = () => {
     if (!assignModal.userId) return;
     try {
       await axios.post(`/beaches/${assignModal.beachId}/admins`, { userId: assignModal.userId });
+      toast.success('Admin assigned successfully');
       closeAssign();
       await fetchBeaches();
     } catch (err) {
       console.error('Assign admin failed:', err);
+      toast.error(err.response?.data?.message || 'Failed to assign admin');
     }
   };
 
@@ -152,29 +154,26 @@ const ManageBeaches = () => {
       <div className="dashboard-content">
         <div className="page-header">
           <h1>Beach Management</h1>
-          <div className="header-actions">
-            <button className="add-button" onClick={() => setAddAdminModal({ open: true, name: '', email: '', phone: '', role: 'User' })}>
-              <Plus size={20} />
-              <span>Add New Admin</span>
-            </button>
-            <button className="add-button" onClick={() => navigate('/add-new-beach')}>
-              <Plus size={20} />
-              <span>Add New Beach</span>
-            </button>
-          </div>
         </div>
 
+        <h2 className="section-title">Quick Stats</h2>
         <div className="stats-grid">
           <div className="stat-card stat-total-beaches">
             <div className="stat-info">
               <div className="stat-label">Total Beaches Managed</div>
               <div className="stat-value">{stats.totalBeaches}</div>
             </div>
+            <div className="stat-card-icon">
+              <Building2 size={22} />
+            </div>
           </div>
           <div className="stat-card stat-active-admins">
             <div className="stat-info">
               <div className="stat-label">Active Admins</div>
               <div className="stat-value">{stats.activeAdmins}</div>
+            </div>
+            <div className="stat-card-icon">
+              <Users size={22} />
             </div>
           </div>
         </div>
@@ -183,10 +182,13 @@ const ManageBeaches = () => {
 
         {showAdd && (
           <div className="modal-overlay">
+            
             <div className="modal">
             <h3>Add New Beach</h3>
               <form onSubmit={createBeach} className="modal-form">
+                
                 <div className="form-grid">
+                  
                   <label>
                     <span>Beach Name</span>
                     <input value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} required />
@@ -328,6 +330,7 @@ const ManageBeaches = () => {
                     role: roleForBackend
                   };
                   await axios.post('/admins', payload);
+                  toast.success('Admin created successfully');
                   setAddAdminModal({ open: false, name: '', email: '', phone: '', role: 'User' });
                   await fetchBeaches();
                 } catch (err) {
@@ -366,6 +369,19 @@ const ManageBeaches = () => {
           <div className="loading">Loading beaches...</div>
         ) : (
           <div className="table-container">
+            <div className="table-header-bar">
+              <h3 className="panel-title">Managed Beaches</h3>
+              <div className="table-header-actions">
+                <button className="add-button" onClick={() => setAddAdminModal({ open: true, name: '', email: '', phone: '', role: 'User' })}>
+                  <Plus size={20} />
+                  <span>Add New Admin</span>
+                </button>
+                <button className="add-button" onClick={() => navigate('/add-new-beach')}>
+                  <Plus size={20} />
+                  <span>Add New Beach</span>
+                </button>
+              </div>
+            </div>
             <table className="data-table">
               <thead>
                 <tr>

@@ -666,3 +666,45 @@
     gap: 12px;
   }
 }
+
+/* Additional responsive enhancements */
+@media (max-width: 1200px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  .grid-config,
+  .grid-controls-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  .add-beach-page {
+    padding: 20px;
+  }
+  .beach-form-container {
+    padding: 20px;
+  }
+  .sunbed-grid-container {
+    flex-direction: column;
+  }
+  .sunbed-grid-wrapper {
+    max-height: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .add-beach-page {
+    padding: 16px;
+  }
+  .form-actions {
+    justify-content: stretch;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .btn-secondary,
+  .btn-primary {
+    width: 100%;
+  }
+}

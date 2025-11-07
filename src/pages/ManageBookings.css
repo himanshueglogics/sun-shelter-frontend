@@ -208,3 +208,46 @@
   padding: 14px 18px;
   background-color: transparent;
 }
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .stats-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .filters-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .manage-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .stats-cards {
+    grid-template-columns: 1fr;
+  }
+  .metric-cards {
+    grid-template-columns: 1fr;
+  }
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .bookings-card {
+    overflow-x: auto;
+  }
+  .bookings-card table {
+    min-width: 720px;
+  }
+  .filters-actions {
+    justify-content: stretch;
+  }
+  .btn-outline,
+  .btn-primary {
+    width: 100%;
+  }
+}

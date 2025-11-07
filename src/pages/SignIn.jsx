@@ -51,12 +51,16 @@ const SignIn = () => {
         </div>
         
         <div className="welcome-section">
-          <div className="progress-bar"></div>
-          <h1 className="welcome-title">Great to have<br />you back!</h1>
-          <p className="welcome-subtitle">
-            Consequat adipisicing ea do labore trure<br />
-            adipisicing occaecat cupidatat excepteur duis ino
-          </p>
+          <div className='alignment'>
+            <div className="progress-bar"></div>
+            <div>
+              <h1 className="welcome-title">Great to have<br />you back!</h1>
+              <p className="welcome-subtitle" >
+                Consequat adipisicing ea do labore trure<br />
+                adipisicing occaecat cupidatat excepteur duis ino
+              </p>
+            </div>
+          </div>
           <div className="sun-icon">
             <svg width="50" height="50" viewBox="0 0 60 60" fill="none">
               <circle cx="30" cy="30" r="10" fill="#FDB022"/>
@@ -69,12 +73,13 @@ const SignIn = () => {
               <line x1="43" y1="43" x2="39" y2="39" stroke="#FDB022" strokeWidth="2"/>
               <line x1="21" y1="21" x2="17" y2="17" stroke="#FDB022" strokeWidth="2"/>
             </svg>
+      
           </div>
           <div className="wave-decoration">
-            <svg width="100%" height="200" viewBox="0 0 500 200" preserveAspectRatio="none" fill="none">
+            {/* <svg width="100%" height="100vh" viewBox="0 0 500 200" preserveAspectRatio="none" fill="none">
               <path d="M0 100C150 50 350 150 500 100L500 200L0 200Z" fill="#B8D4E8" opacity="0.4"/>
               <path d="M0 120C150 70 350 170 500 120L500 200L0 200Z" fill="#A5C9E0" opacity="0.6"/>
-            </svg>
+            </svg> */}
           </div>
         </div>
       </div>

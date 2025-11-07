@@ -143,35 +143,35 @@ const Dashboard = () => {
 
         <div className="stats-grid">
           <div className="stat-card">
-            <div className="stat-icon" style={{ backgroundColor: '#fff3e0' }}>
-              <MapPin size={24} color="#f59e0b" />
-            </div>
             <div className="stat-info">
               <div className="stat-label">Total Bookings</div>
               <div className="stat-value">{stats?.totalBookings?.toLocaleString() || '1,245'}</div>
               <div className="stat-change positive">{stats?.bookingsIncrease || '+15%'} since last month</div>
             </div>
+            <div className="stat-icon" >
+              <MapPin size={24} color="#f59e0b" />
+            </div>
           </div>
 
           <div className="stat-card">
-            <div className="stat-icon" style={{ backgroundColor: '#fce7f3' }}>
-              <TrendingUp size={24} color="#ec4899" />
-            </div>
             <div className="stat-info">
               <div className="stat-label">Average Occupancy</div>
               <div className="stat-value">{averageOccupancy}</div>
               <div className="stat-change positive">{occupancyChange} compared to last year</div>
             </div>
+            <div className="stat-icon" >
+              <TrendingUp size={24} color="#f59e0b" />
+            </div>
           </div>
 
-          <div className="stat-card">
-            <div className="stat-icon" style={{ backgroundColor: '#fef3c7' }}>
-              <Calendar size={24} color="#f59e0b" />
-            </div>
+          <div className="stat-card" style={{backgroundColor:"white"}}>
             <div className="stat-info">
               <div className="stat-label">Upcoming Bookings</div>
               <div className="stat-value">{stats?.upcomingBookings || '320'}</div>
               <div className="stat-change">Next 7 days</div>
+            </div>
+            <div className="stat-icon" >
+              <Calendar size={24} color="#f59e0b" />
             </div>
           </div>
         </div>

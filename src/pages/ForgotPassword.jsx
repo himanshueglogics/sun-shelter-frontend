@@ -57,10 +57,10 @@ const ForgotPassword = () => {
             </svg>
           </div>
           <div className="wave-decoration">
-            <svg width="100%" height="200" viewBox="0 0 500 200" preserveAspectRatio="none" fill="none">
+            {/* <svg width="100%" height="200" viewBox="0 0 500 200" preserveAspectRatio="none" fill="none">
               <path d="M0 100C150 50 350 150 500 100L500 200L0 200Z" fill="#B8D4E8" opacity="0.4"/>
               <path d="M0 120C150 70 350 170 500 120L500 200L0 200Z" fill="#A5C9E0" opacity="0.6"/>
-            </svg>
+            </svg> */}
           </div>
         </div>
       </div>

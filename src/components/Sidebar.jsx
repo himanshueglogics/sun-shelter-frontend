@@ -16,6 +16,19 @@ const Sidebar = () => {
     }
   });
 
+  const [isMobile, setIsMobile] = useState(() => {
+    try { return window.innerWidth <= 992; } catch { return false; }
+  });
+
+  useEffect(() => {
+    const onResize = () => {
+      const mobile = window.innerWidth <= 992;
+      setIsMobile(mobile);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const toggleHidden = () => {
     setHidden((prev) => {
       const next = !prev;
@@ -28,6 +41,7 @@ const Sidebar = () => {
     // Reflect state on <body> so layout can adjust via CSS
     try {
       document.body.classList.toggle('sidebar-collapsed', hidden);
+      document.body.classList.toggle('sidebar-open', !hidden);
     } catch {}
   }, [hidden]);
 
@@ -59,6 +73,8 @@ const Sidebar = () => {
       >
         {hidden ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </button>
+      {/* Backdrop for mobile when sidebar is open */}
+      {isMobile && !hidden && <div className="sidebar-backdrop" onClick={toggleHidden} aria-hidden="true" />}
       <div className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">

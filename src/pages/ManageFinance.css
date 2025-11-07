@@ -374,3 +374,43 @@
   color: #374151;
   border-bottom: 1px solid #f3f4f6;
 }
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .overview-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .revenue-grid,
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .occupancy-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 992px) {
+  .filter-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .revenue-grid,
+  .payment-cards,
+  .language-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .finance-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .overview-cards { grid-template-columns: 1fr; }
+  .filter-row { grid-template-columns: 1fr; }
+  .filter-actions { justify-content: stretch; }
+  .btn-filter { width: 100%; }
+  .insights-section,
+  .payout-section,
+  .detailed-report { overflow-x: auto; }
+  .payout-table,
+  .service-table,
+  .detailed-table,
+  .transactions-table { min-width: 720px; }
+}
