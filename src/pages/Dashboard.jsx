@@ -7,8 +7,15 @@ import './Dashboard.css';
 import { getSocket } from '../services/socket';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    averageOccupancy: 0,
+    upcomingBookings: 0,
+    totalRevenue: 0,
+    beachOccupancy: []
+  });
   const [alerts, setAlerts] = useState([]);
+  const [selectedBeachIds, setSelectedBeachIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const alertsPerPage = 4;
@@ -27,7 +34,7 @@ const Dashboard = () => {
       setStats((prev) => {
         if (!prev) return prev;
         const list = Array.isArray(prev.beachOccupancy) ? [...prev.beachOccupancy] : [];
-        const idx = list.findIndex((b) => String(b.beachId || b._id) === String(payload.beachId));
+        const idx = list.findIndex((b) => String(b.beachId ) === String(payload.beachId));
         const nextItem = {
           ...(idx >= 0 ? list[idx] : {}),
           beachId: payload.beachId,
@@ -37,6 +44,13 @@ const Dashboard = () => {
         if (idx >= 0) list[idx] = nextItem; else list.push(nextItem);
         return { ...prev, beachOccupancy: list };
       });
+      setSelectedBeachIds(prev=>{
+        if(!payload.beachId) return prev;
+        if (prev.has(payload.beachId)) return prev;
+        const next =new Set(prev);
+        next.add(payload.beachId);
+        return next;
+        });
     };
     s.on('beach:occupancy', onOccupancy);
     return () => {
@@ -50,7 +64,12 @@ const Dashboard = () => {
         axios.get('/dashboard/stats'),
         axios.get('/alerts')
       ]);
-      setStats(statsRes.data);
+      // setStats(statsRes.data);
+      const data=statsRes.data||{};
+      setStats(data);
+      if (!selectedBeachIds.size && Array.isArray(data.beachOccupancy)){
+        setSelectedBeachIds(new Set(data.beachOccupancy.map(b => b.beachId)));
+      }
       setAlerts(alertsRes.data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -67,14 +86,13 @@ const Dashboard = () => {
 
   // Calculate average occupancy dynamically from beach occupancy data
   const averageOccupancy = useMemo(() => {
-    if (!stats?.beachOccupancy || stats.beachOccupancy.length === 0) {
-      return stats?.avgOccupancy || '78%';
-    }
-    
-    const total = stats.beachOccupancy.reduce((sum, beach) => sum + (beach.occupancyRate || 0), 0);
-    const avg = Math.round(total / stats.beachOccupancy.length);
+     const all = Array.isArray(stats?.beachOccupancy) ? stats.beachOccupancy : [];
+ const filtered = all.filter(b => selectedBeachIds.has(b.beachId));
+   if (filtered.length === 0) return '0%';
+   const total = filtered.reduce((sum, beach) => sum + (beach.occupancyRate || 0), 0);
+   const avg = Math.round(total / filtered.length);
     return `${avg}%`;
-  }, [stats?.beachOccupancy, stats?.avgOccupancy]);
+  }, [stats?.beachOccupancy, selectedBeachIds]);
 
   // Calculate occupancy change compared to baseline (if available from stats)
   const occupancyChange = useMemo(() => {

@@ -31,7 +31,7 @@ const ManageBeaches = () => {
     zoneRows: 0,
     zoneCols: 0
   });
-  const [assignModal, setAssignModal] = useState({ open: false, beachId: null, beachName: '', userId: '', userIds: [], role: '', grantAdmin: false });
+  const [assignModal, setAssignModal] = useState({ open: false, beachId: null, beachName: '', selectedUserId: [], role: '', grantAdmin: false });
   const [addAdminModal, setAddAdminModal] = useState({ open: false, name: '', email: '', phone: '', password: '', role: 'Admin' });
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [adminSearch, setAdminSearch] = useState('');
@@ -47,15 +47,15 @@ const ManageBeaches = () => {
     const handler = (payload) => {
       if (!payload || !payload.beachId) return;
       setOccupancy(prev => {
-        const idx = prev.findIndex(x => String(x._id || x.beachId) === String(payload.beachId));
+        const idx = prev.findIndex(x => String(x.id || x.beachId) === String(payload.beachId));
         if (idx !== -1) {
           const copy = [...prev];
           copy[idx] = { ...copy[idx], occupancy: payload.occupancyRate };
           return copy;
         }
-        const b = beaches.find(bb => String(bb._id) === String(payload.beachId));
+        const b = beaches.find(bb => String(bb.id ?? bb.id) === String(payload.beachId));
         const name = b?.name || `Beach ${payload.beachId.substring(0, 4)}`;
-        return [...prev, { _id: payload.beachId, name, occupancy: payload.occupancyRate }];
+        return [...prev, { id: payload.beachId, name, occupancy: payload.occupancyRate }];
       });
     };
     s.on('beach:occupancy', handler);
@@ -63,6 +63,19 @@ const ManageBeaches = () => {
       s.off('beach:occupancy', handler);
     };
   }, []);
+  
+  // Close the admin dropdown when clicking outside
+useEffect(() => {
+  const handleClickOutside = (e) => {
+    if (!e.target.closest('.custom-select-wrapper')) {
+      setShowUserDropdown(false);
+    }
+  };
+
+  document.addEventListener('click', handleClickOutside);
+  return () => document.removeEventListener('click', handleClickOutside);
+}, []);
+
 
   const fetchBeaches = async () => {
     try {
@@ -79,8 +92,8 @@ const ManageBeaches = () => {
         const occ = await axios.get('/beaches/occupancy-overview');
         const list = Array.isArray(occ.data) ? occ.data : [];
         setOccupancy(list);
-        // Join socket rooms for these beaches to receive updates
-        (response.data.beaches || []).forEach(b => joinBeach(b._id));
+        // Join socket rooms for these beaches to receive updates (use numeric id)
+        (response.data.beaches || []).forEach(b => joinBeach(b.id));
       } catch (e) {
         setOccupancy([]);
       }
@@ -110,7 +123,7 @@ const ManageBeaches = () => {
       };
       const res = await axios.post('/beaches', payload);
       const newBeach = res.data;
-      await axios.post(`/beaches/${newBeach._id}/zones`, {
+      await axios.post(`/beaches/${newBeach.id}/zones`, {
         name: form.zoneName || `Zone 1`,
         rows: Number(form.zoneRows) || 0,
         cols: Number(form.zoneCols) || 0
@@ -124,14 +137,15 @@ const ManageBeaches = () => {
     }
   };
 
-  const openAssign = (beach) => setAssignModal({ open: true, beachId: beach._id, beachName: beach.name, userId: '', userIds: [], role: '', grantAdmin: false });
-  const closeAssign = () => setAssignModal({ open: false, beachId: null, beachName: '', userId: '', role: '', grantAdmin: false });
+  const openAssign = (beach) => setAssignModal({ open: true, beachId: beach.id, beachName: beach.name, selectedUserId: [], role: '', grantAdmin: false });
+  const closeAssign = () => setAssignModal({ open: false, beachId: null, beachName: '', selectedUserId: '', role: '', grantAdmin: false });
   const assignAdmin = async (e) => {
     e.preventDefault();
-    const payload = Array.isArray(assignModal.userIds) && assignModal.userIds.length > 0
-      ? { userIds: assignModal.userIds }
-      : (assignModal.userId ? { userId: assignModal.userId } : null);
-    if (!payload) return;
+    const payload = assignModal.selectedUserId?.length? { userIds: assignModal.selectedUserId } : null;
+    if (!payload) {
+      toast.error('Please select at least one admin user');
+      return;
+    }
     try {
       const res = await axios.post(`/beaches/${assignModal.beachId}/admins`, payload);
       const data = res.data || {};
@@ -139,7 +153,7 @@ const ManageBeaches = () => {
         const assignedCount = (data.assigned || []).length;
         const skippedCount = (data.skipped || []).length;
         if (assignedCount > 0) toast.success(`Assigned ${assignedCount} admin(s)`);
-        if (skippedCount > 0) toast.info(`Skipped ${skippedCount} admin(s)`);
+        if (skippedCount > 0) toast.info(`${skippedCount} admin(s) already assigned`);
       } else {
         toast.success('Admin assigned successfully');
       }
@@ -156,8 +170,10 @@ const ManageBeaches = () => {
       await axios.delete(`/beaches/${deleteConfirm.beachId}`);
       setDeleteConfirm({ open: false, beachId: null, beachName: '' });
       await fetchBeaches();
+      toast.success('Beach deleted successfully');
     } catch (err) {
       console.error('Delete beach failed:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete beach');
     }
   };
 
@@ -281,55 +297,83 @@ const ManageBeaches = () => {
               <form onSubmit={assignAdmin} className="modal-form">
                 <div className="form-field">
                   <label>Beach Name</label>
-                  <input value={assignModal.beachName} placeholder="e.g., Ocean View Beach" disabled />
+                  <input value={assignModal.beachName} pl aceholder="e.g., Ocean View Beach" disabled />
                 </div>
                 <div className="form-field">
-                  <label>Select Admin User</label>
-                  <div className="custom-select-wrapper">
-                    <div className="custom-select-trigger" onClick={()=>setShowUserDropdown(s=>!s)}>
-                      {assignModal.userIds.length > 0 && !adminSearch ? (
-                        <span>{`${assignModal.userIds.length} user(s) selected`}</span>
-                      ) : (
-                        <input
-                          type="text"
-                          value={adminSearch}
-                          onChange={(e)=>{ setAdminSearch(e.target.value); if (!showUserDropdown) setShowUserDropdown(true); }}
-                          onFocus={()=>setShowUserDropdown(true)}
-                          placeholder="Select a user" className='custom-search-user'
-                        />
-                      )}
-                      <span className="dropdown-arrow">▼</span>
-                    </div>
-                    {showUserDropdown && (
-                      <div className="custom-select-dropdown">
-                        {admins
-                          .filter(u => {
-                            const q = adminSearch.trim().toLowerCase();
-                            if (!q) return true;
-                            return (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
-                          })
-                          .map(u => (
-                          <label key={u._id} className="custom-select-option">
-                            <input
-                              type="checkbox"
-                              checked={assignModal.userIds.includes(u._id)}
-                              onChange={(e)=>{
-                                const checked = e.target.checked;
-                                setAssignModal(m=>({
-                                  ...m,
-                                  userIds: checked 
-                                    ? [...m.userIds, u._id]
-                                    : m.userIds.filter(id=>id!==u._id)
-                                }));
-                              }}
-                            />
-                            <span>{u.name} - {u.email}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+  <label>Select Admin User(s)</label>
+  <div className="custom-select-wrapper">
+    {/* Search input */}
+    <input
+      type="text"
+      value={adminSearch}
+      onChange={(e) => {
+        setAdminSearch(e.target.value);
+        if (!showUserDropdown) setShowUserDropdown(true);
+      }}
+      onFocus={() => setShowUserDropdown(true)}
+      placeholder="Search or select users..."
+      className="custom-search-user"
+    />
+
+    {/* Selected users chips */}
+    <div className="selected-users">
+      {assignModal.selectedUserId.map(id => {
+        const u = admins.find(a => a.id === id);
+        return (
+          <span key={id} className="selected-user-chip">
+            {u?.name || 'Unknown'}
+            <button
+              type="button"
+              onClick={() =>
+                setAssignModal(m => ({
+                  ...m,
+                  selectedUserId: m.selectedUserId.filter(uid => uid !== id)
+                }))
+              }
+              className="remove-chip"
+            >
+              ✕
+            </button>
+          </span>
+        );
+      })}
+    </div>
+
+    {/* Dropdown list */}
+    {showUserDropdown && (
+      <div className="custom-select-dropdown">
+        {admins
+          .filter(u => {
+            const q = adminSearch.trim().toLowerCase();
+            if (!q) return true;
+            return (
+              (u.name || '').toLowerCase().includes(q) ||
+              (u.email || '').toLowerCase().includes(q)
+            );
+          })
+          .map(u => (
+            <label key={u.id} className="custom-select-option">
+              <input
+                type="checkbox"
+                checked={assignModal.selectedUserId.includes(u.id)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setAssignModal((m) => ({
+                    ...m,
+                    selectedUserId: checked
+                      ? [...m.selectedUserId, u.id]
+                      : m.selectedUserId.filter(id => id !== u.id),
+                  }));
+
+                }}
+              />
+              <span>{u.name} - {u.email}</span>
+            </label>
+          ))}
+      </div>
+    )}
+  </div>
+</div>
                 <div className="form-field">
                   <label>Assign Role</label>
                   <select value={assignModal.role} onChange={(e) => setAssignModal(m => ({ ...m, role: e.target.value }))}>
@@ -372,7 +416,9 @@ const ManageBeaches = () => {
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 try {
-                  const roleForBackend = (addAdminModal.role || 'User').toLowerCase() === 'user' ? 'admin' : (addAdminModal.role || 'admin');
+
+                  let roleForBackend = (addAdminModal.role || 'User').toLowerCase() === 'user' ? 'admin' : (addAdminModal.role || 'admin').toLowerCase();
+                  console.log(roleForBackend)
                   const payload = {
                     name: addAdminModal.name,
                     email: addAdminModal.email,
@@ -447,13 +493,13 @@ const ManageBeaches = () => {
               <tbody>
                 {beaches.length > 0 ? (
                   beaches.map((beach) => (
-                    <tr key={beach._id}>
+                    <tr key={beach.id}>
                       <td>{beach.name}</td>
                       <td>{beach.location}</td>
                       <td>
                         <div className="avatars">
                           {(beach.admins || []).slice(0, 3).map((u) => (
-                            <img key={u._id} className="avatar" alt={u.name}
+                            <img key={u.id} className="avatar" alt={u.name}
                               src={`https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'Admin')}&background=4A90E2&color=fff`} />
                           ))}
                           {(beach.admins || []).length > 3 && (
@@ -472,10 +518,10 @@ const ManageBeaches = () => {
                       <td>
                         <div className="action-buttons">
                           <button className="btn-assign" onClick={() => openAssign(beach)}>Assign Admin</button>
-                          <button className="icon-button danger" onClick={() => setDeleteConfirm({ open: true, beachId: beach._id, beachName: beach.name })}>
+                          <button className="icon-button danger" onClick={() => setDeleteConfirm({ open: true, beachId: beach.id, beachName: beach.name })}>
                             <Trash2 size={18} />
                           </button>
-                          <button className="icon-button" onClick={() => navigate(`/edit-beach/${beach._id}`)}>
+                          <button className="icon-button" onClick={() => navigate(`/edit-beach/${beach.id}`)}>
                             <Edit size={18} />
                           </button>
                         </div>

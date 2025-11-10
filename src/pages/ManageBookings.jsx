@@ -32,7 +32,7 @@ const ManageBookings = () => {
       try {
         const res = await axios.get('/beaches');
         const data = res.data;
-        const list = Array.isArray(data) ? data : (Array.isArray(data?.items) ? data.items : []);
+        const list = Array.isArray(data?.beaches) ? data.beaches : (Array.isArray(data) ? data : []);
         setBeaches(list);
       } catch (e) {
         console.error('Error loading beaches list:', e);
@@ -48,8 +48,8 @@ const ManageBookings = () => {
       if (checkInFrom) params.checkInFrom = checkInFrom;
       if (checkInTo) params.checkInTo = checkInTo;
       const response = await axios.get('/bookings', { params });
-      setBookings(response.data.items || []);
-      setPages(response.data.pages || 1);
+      setBookings(response.data.bookings || []);
+      setPages(response.data.totalPages || 1);
       
       // Fetch real statistics from API
       try {
@@ -63,7 +63,7 @@ const ManageBookings = () => {
         console.error('Error fetching booking stats:', statsError);
         // Fallback: calculate from all bookings if stats endpoint fails
         const allBookingsResponse = await axios.get('/bookings', { params: { limit: 10000 } });
-        const allBookings = allBookingsResponse.data.items || [];
+        const allBookings = allBookingsResponse.data.bookings || [];
         const activeCount = allBookings.filter(b => 
           b.status === 'confirmed' || b.status === 'pending' || b.status === 'completed'
         ).length;

@@ -27,7 +27,7 @@ const SignIn = () => {
     try {
       const response = await axios.post('/auth/login', formData);
       localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please try again.');

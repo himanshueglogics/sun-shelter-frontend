@@ -5,6 +5,7 @@ import axios from '../api/axios';
 import { logAuthDebugInfo } from '../utils/auth';
 import './ManagePage.css';
 import './ManageAdmins.css';
+import { toast } from 'react-toastify';
 
 const ManageAdmins = () => {
   const [admins, setAdmins] = React.useState([]);
@@ -39,7 +40,8 @@ const ManageAdmins = () => {
   const handleRemove = async (id) => {
     try {
       await axios.delete(`/admins/${id}`);
-      setAdmins(prev => prev.filter(a => a._id !== id));
+      setAdmins(prev => prev.filter(a => a.id !== id));
+      toast.success("Admin deleted successfully")
     } catch (e) {
       console.error('Error removing admin:', e);
     }
@@ -121,7 +123,7 @@ const ManageAdmins = () => {
               admins
                 .filter(u => u.role !== 'super_admin') // Hide super admin from list
                 .map((u) => (
-                  <div className="admin-card" key={u._id}>
+                  <div className="admin-card" key={u.id}>
                     <div className="admin-top">
                       <div className="admin-avatar">
                         <img src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name||'Admin')}&background=f59e0b&color=fff`} alt={u.name} />
@@ -135,7 +137,7 @@ const ManageAdmins = () => {
                       <div className="info-row"><Mail size={16} color="#4A90E2" /> {u.email}</div>
                       <div className="info-row"><Phone size={16} color="#4A90E2" /> {u.phone || '—'}</div>
                     </div>
-                    <button className="remove-btn" onClick={() => handleRemove(u._id)}>Remove</button>
+                    <button className="remove-btn" onClick={() => handleRemove(u.id)}>Remove</button>
                   </div>
                 ))
             ) : (

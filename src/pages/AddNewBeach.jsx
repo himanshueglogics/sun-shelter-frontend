@@ -47,14 +47,14 @@ const AddNewBeach = () => {
       // Only update if the event relates to the currently selected zone (if any)
       if (selectedZone && payload.zoneId !== String(selectedZone)) return;
       setSunbeds(prev => prev.map(b => {
-        // Match by _id if available, otherwise by row/col
-        const match = b._id ? String(b._id) === String(payload.sunbed?._id) : (b.row === payload.sunbed?.row && b.col === payload.sunbed?.col);
+       
+        const match = b.id ? String(b.id) === String(payload.sunbed?.id) : (b.row === payload.sunbed?.row && b.col === payload.sunbed?.col);
         return match ? { ...b, ...payload.sunbed } : b;
       }));
     };
     const onZoneUpdate = (payload) => {
       if (!payload || payload.beachId !== id) return;
-      if (!payload.zone || String(payload.zone._id) !== String(selectedZone)) return;
+      if (!payload.zone || String(payload.zone.id) !== String(selectedZone)) return;
       setRows(payload.zone.rows || rows);
       setCols(payload.zone.cols || cols);
       if (Array.isArray(payload.zone.sunbeds)) {
@@ -97,7 +97,7 @@ const AddNewBeach = () => {
         setZones(beach.zones);
         // Default to first zone if none selected
         const firstZone = beach.zones[0];
-        const firstZoneId = firstZone?._id || firstZone?.id;
+        const firstZoneId = String(firstZone?.id)
         setSelectedZone(prev => prev || firstZoneId);
         
         // Immediately set rows/cols from first zone to avoid showing 0
@@ -154,7 +154,7 @@ const AddNewBeach = () => {
   // When selectedZone changes, set rows/cols and sunbeds from that zone's data
   useEffect(() => {
     if (!selectedZone) return;
-    const z = zones.find(zz => String(zz._id || zz.id) === String(selectedZone));
+    const z = zones.find(zz => String(zz.id) === String(selectedZone));
     if (z) {
       // Always use zone's actual rows/cols values
       setRows(z.rows || 0);
@@ -182,7 +182,7 @@ const AddNewBeach = () => {
   useEffect(() => {
     // If there are already sunbeds (from backend), don't overwrite
     if (sunbeds.length > 0) return;
-    const z = zones.find(zz => String(zz._id || zz.id) === String(selectedZone));
+    const z = zones.find(zz => String( zz.id) === String(selectedZone));
     const r = (z && z.rows) || rows;
     const c = (z && z.cols) || cols;
     if (r > 0 && c > 0) {
@@ -202,7 +202,7 @@ const AddNewBeach = () => {
     if (rows === 0 || cols === 0) {
       setSunbeds([]);
       if (selectedZone) {
-        setZones(prev => prev.map(zz => String(zz._id || zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: [] } : zz));
+        setZones(prev => prev.map(zz => String(zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: [] } : zz));
       }
       return; // nothing else to do when 0 clears
     }
@@ -216,12 +216,12 @@ const AddNewBeach = () => {
     }
     setSunbeds(beds);
     if (selectedZone) {
-      setZones(prev => prev.map(zz => String(zz._id || zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: beds } : zz));
+      setZones(prev => prev.map(zz => String( zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: beds } : zz));
     }
   }, [rows, cols, selectedZone, isEditMode, id]);
 
-  const toggleSunbed = (row, col) => {
-    // Support both backend beds (with _id) and generated ones (row/col)
+  const toggleSunbed = async (row, col) => {
+    let changed = null;
     setSunbeds(prev => {
       const updated = prev.map(b => {
         const isTarget = (b.row === row && b.col === col);
@@ -230,22 +230,32 @@ const AddNewBeach = () => {
           if (b.status === 'reserved' || b.status === 'unavailable') return b;
           // Toggle between available <-> selected
           const nextStatus = b.status === 'selected' ? 'available' : 'selected';
+          if (!changed) changed = { id: b.id, nextStatus };
           return { ...b, status: nextStatus };
         }
         return b;
       });
-      
-      // Also update the zones array with the new sunbed data
+
       if (selectedZone) {
         setZones(prev => prev.map(z => 
-          String(z._id || z.id) === String(selectedZone) 
+          String(z.id) === String(selectedZone)
             ? { ...z, sunbeds: updated }
             : z
         ));
       }
-      
+
       return updated;
     });
+
+    // Persist immediately in edit mode when we have a real bed id
+    try {
+      if (isEditMode && changed && changed.id) {
+        await axios.put(`/beaches/${id}/zones/${selectedZone}/sunbeds/${changed.id}`, { status: changed.nextStatus });
+      }
+    } catch (e) {
+      // Non-blocking: backend will still be corrected on Save, but log for debugging
+      console.error('Failed to update sunbed status:', e);
+    }
   };
 
   const handleImageUpload = (e) => {
@@ -282,8 +292,8 @@ const AddNewBeach = () => {
         
         // Update zones with current sunbed state
         for (const zone of zones) {
-          if (zone._id && zone.sunbeds && zone.sunbeds.length > 0) {
-            await axios.put(`/beaches/${beachId}/zones/${zone._id}`, {
+          if (zone.id && zone.sunbeds && zone.sunbeds.length > 0) {
+            await axios.put(`/beaches/${beachId}/zones/${zone.id}`, {
               name: zone.name,
               rows: zone.rows,
               cols: zone.cols,
@@ -301,7 +311,7 @@ const AddNewBeach = () => {
           return;
         }
         const res = await axios.post('/beaches', payload);
-        beachId = res.data._id;
+        beachId = res.data.id;
         
         // Create zones with sunbed data
         for (const zone of zones) {
@@ -434,7 +444,7 @@ const AddNewBeach = () => {
             </div>
             <div className="zones-list">
               {zones.map(zone => {
-                const zid = String(zone._id || zone.id);
+                const zid = String(zone.id);
                 return (
                 <div key={zid} className={`zone-chip ${String(selectedZone) === zid ? 'selected' : ''}`} onClick={() => setSelectedZone(zid)}>
                   <span>{zone.name}</span>
@@ -452,7 +462,7 @@ const AddNewBeach = () => {
             {/* Zone Selection Checkboxes */}
             <div className="zone-checkboxes">
               {zones.map((zone, idx) => {
-                const zid = String(zone._id || zone.id);
+                const zid = String( zone.id);
                 return (
                 <label key={zid} className="zone-checkbox-item">
                   <input 

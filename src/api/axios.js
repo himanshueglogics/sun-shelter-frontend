@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getSocket } from '../services/socket';
+import { logout } from '../utils/auth';
 
 const instance = axios.create({
   baseURL: 'http://localhost:5000/api',
@@ -24,6 +25,16 @@ instance.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
+  }
+);
+
+instance.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err?.response?.status === 401) {
+      logout();
+    }
+    return Promise.reject(err);
   }
 );
 
