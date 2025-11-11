@@ -63,18 +63,18 @@ const ManageBeaches = () => {
       s.off('beach:occupancy', handler);
     };
   }, []);
-  
-  // Close the admin dropdown when clicking outside
-useEffect(() => {
-  const handleClickOutside = (e) => {
-    if (!e.target.closest('.custom-select-wrapper')) {
-      setShowUserDropdown(false);
-    }
-  };
 
-  document.addEventListener('click', handleClickOutside);
-  return () => document.removeEventListener('click', handleClickOutside);
-}, []);
+  // Close the admin dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.custom-select-wrapper')) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
 
   const fetchBeaches = async () => {
@@ -141,7 +141,7 @@ useEffect(() => {
   const closeAssign = () => setAssignModal({ open: false, beachId: null, beachName: '', selectedUserId: '', role: '', grantAdmin: false });
   const assignAdmin = async (e) => {
     e.preventDefault();
-    const payload = assignModal.selectedUserId?.length? { userIds: assignModal.selectedUserId } : null;
+    const payload = assignModal.selectedUserId?.length ? { userIds: assignModal.selectedUserId } : null;
     if (!payload) {
       toast.error('Please select at least one admin user');
       return;
@@ -297,83 +297,82 @@ useEffect(() => {
               <form onSubmit={assignAdmin} className="modal-form">
                 <div className="form-field">
                   <label>Beach Name</label>
-                  <input value={assignModal.beachName} pl aceholder="e.g., Ocean View Beach" disabled />
+                  <input value={assignModal.beachName} placeholder="e.g., Ocean View Beach" disabled />
                 </div>
                 <div className="form-field">
-  <label>Select Admin User(s)</label>
-  <div className="custom-select-wrapper">
-    {/* Search input */}
-    <input
-      type="text"
-      value={adminSearch}
-      onChange={(e) => {
-        setAdminSearch(e.target.value);
-        if (!showUserDropdown) setShowUserDropdown(true);
-      }}
-      onFocus={() => setShowUserDropdown(true)}
-      placeholder="Search or select users..."
-      className="custom-search-user"
-    />
+                  <label>Select Admin User(s)</label>
+                  <div className="custom-select-wrapper">
+                   
+                    <input
+                      type="text"
+                      value={adminSearch}
+                      onChange={(e) => {
+                        setAdminSearch(e.target.value);
+                        if (!showUserDropdown) setShowUserDropdown(true);
+                      }}
+                      onFocus={() => setShowUserDropdown(true)}
+                      placeholder="Search or select users..."
+                      className="custom-search-user"
+                    />
 
-    {/* Selected users chips */}
-    <div className="selected-users">
-      {assignModal.selectedUserId.map(id => {
-        const u = admins.find(a => a.id === id);
-        return (
-          <span key={id} className="selected-user-chip">
-            {u?.name || 'Unknown'}
-            <button
-              type="button"
-              onClick={() =>
-                setAssignModal(m => ({
-                  ...m,
-                  selectedUserId: m.selectedUserId.filter(uid => uid !== id)
-                }))
-              }
-              className="remove-chip"
-            >
-              ✕
-            </button>
-          </span>
-        );
-      })}
-    </div>
+                    <div className="selected-users">
+                      {assignModal.selectedUserId.map(id => {
+                        const u = admins.find(a => a.id === id);
+                        return (
+                          <span key={id} className="selected-user-chip">
+                            {u?.name || 'Unknown'}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAssignModal(m => ({
+                                  ...m,
+                                  selectedUserId: m.selectedUserId.filter(uid => uid !== id)
+                                }))
+                              }
+                              className="remove-chip"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
 
-    {/* Dropdown list */}
-    {showUserDropdown && (
-      <div className="custom-select-dropdown">
-        {admins
-          .filter(u => {
-            const q = adminSearch.trim().toLowerCase();
-            if (!q) return true;
-            return (
-              (u.name || '').toLowerCase().includes(q) ||
-              (u.email || '').toLowerCase().includes(q)
-            );
-          })
-          .map(u => (
-            <label key={u.id} className="custom-select-option">
-              <input
-                type="checkbox"
-                checked={assignModal.selectedUserId.includes(u.id)}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setAssignModal((m) => ({
-                    ...m,
-                    selectedUserId: checked
-                      ? [...m.selectedUserId, u.id]
-                      : m.selectedUserId.filter(id => id !== u.id),
-                  }));
+                    {/* Dropdown list */}
+                    {showUserDropdown && (
+                      <div className="custom-select-dropdown">
+                        {admins
+                          .filter(u => {
+                            const q = adminSearch.trim().toLowerCase();
+                            if (!q) return true;
+                            return (
+                              (u.name || '').toLowerCase().includes(q) ||
+                              (u.email || '').toLowerCase().includes(q)
+                            );
+                          })
+                          .map(u => (
+                            <label key={u.id} className="custom-select-option">
+                              <input
+                                type="checkbox"
+                                checked={assignModal.selectedUserId.includes(u.id)}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setAssignModal((m) => ({
+                                    ...m,
+                                    selectedUserId: checked
+                                      ? [...m.selectedUserId, u.id]
+                                      : m.selectedUserId.filter(id => id !== u.id),
+                                  }));
 
-                }}
-              />
-              <span>{u.name} - {u.email}</span>
-            </label>
-          ))}
-      </div>
-    )}
-  </div>
-</div>
+                                }}
+                              />
+                              <span>{u.name} - {u.email}</span>
+                            </label>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="form-field">
                   <label>Assign Role</label>
                   <select value={assignModal.role} onChange={(e) => setAssignModal(m => ({ ...m, role: e.target.value }))}>
@@ -418,7 +417,7 @@ useEffect(() => {
                 try {
 
                   let roleForBackend = (addAdminModal.role || 'User').toLowerCase() === 'user' ? 'admin' : (addAdminModal.role || 'admin').toLowerCase();
-                  console.log(roleForBackend)
+                
                   const payload = {
                     name: addAdminModal.name,
                     email: addAdminModal.email,

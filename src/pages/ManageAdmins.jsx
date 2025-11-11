@@ -82,6 +82,8 @@ const ManageAdmins = () => {
         setForm({ name: '', email: '', phone: '', password: '', role: 'Office Manager' });
         setSuccess('');
       }, 1500);
+
+
       
     } catch (e) {
       console.error('Error creating admin:', e);
