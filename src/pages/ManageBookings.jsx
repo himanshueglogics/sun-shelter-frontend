@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import './ManagePage.css';
 import './ManageBookings.css';
 import { toast } from 'react-toastify';
+import { getSocket } from '../services/socket';
 
 const ManageBookings = () => {
   const navigate = useNavigate();
@@ -20,11 +21,30 @@ const ManageBookings = () => {
   const [beaches, setBeaches] = useState([]);
   const [stats, setStats] = useState({ total: 0, active: 0, cancelled: 0 });
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, bookingId: null, customerName: '' });
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page,status,beach,checkInFrom,checkInTo]);
+
+  useEffect(()=>{
+    const socket=getSocket();
+    const handleBookingCancelled=(payload)=>{
+      console.log("Booking Cancelled",payload)
+      fetchBookings();
+    }
+    const handleBookingCreated=(payload)=>{
+      console.log("Booking created",payload)
+      fetchBookings();
+    }
+    socket.on("booking:cancelled",handleBookingCancelled);
+    socket.on("booking:created",handleBookingCreated);
+    return ()=>{
+      socket.off("booking:cancelled",handleBookingCancelled);
+      socket.off("booking:created",handleBookingCreated);
+    }
+  },[])
 
   useEffect(() => {
     // fetch beaches for dropdown
@@ -42,6 +62,12 @@ const ManageBookings = () => {
 
   const fetchBookings = async () => {
     try {
+      if (checkInFrom && checkInTo && new Date(checkInTo)<new Date(checkInFrom)){
+        toast.error("Check-out date cannot be before Check-in date")
+        setLoading(false)
+        return;
+      }
+      setLoading(true)
       const params = { page, limit: 10 };
       if (status) params.status = status;
       if (beach) params.beach = beach;
@@ -65,9 +91,9 @@ const ManageBookings = () => {
         const allBookingsResponse = await axios.get('/bookings', { params: { limit: 10000 } });
         const allBookings = allBookingsResponse.data.bookings || [];
         const activeCount = allBookings.filter(b => 
-          b.status === 'confirmed' || b.status === 'pending' || b.status === 'completed'
+         [  'confirmed','pending', 'completed'].includes(b.status)
         ).length;
-        const cancelledCount = allBookings.filter(b => b.status === 'cancelled').length;
+        const cancelledCount = allBookings.filter(b => b.status === 'cancelled').length;  
         setStats({ 
           total: allBookings.length, 
           active: activeCount, 
@@ -85,8 +111,8 @@ const ManageBookings = () => {
 
   const applyFilters = () => {
     setPage(1);
-    setLoading(true);
-    fetchBookings();
+    // setLoading(true);
+    // fetchBookings();
   };
 
   const handleDeleteBooking = async () => {
@@ -102,8 +128,7 @@ const ManageBookings = () => {
   };
 
   const handleEditBooking = (bookingId) => {
-    // Navigate to edit booking page (you can create this page later)
-    navigate(`/edit-booking/${bookingId}`);
+    navigate(`/editbooking/${bookingId}`);
   };
 
   return (
@@ -184,7 +209,7 @@ const ManageBookings = () => {
               <select value={beach} onChange={(e)=>setBeach(e.target.value)}>
                 <option value="">All Beaches</option>
                 {(Array.isArray(beaches) ? beaches : []).map(b => (
-                  <option key={b._id} value={b._id}>{b.name}</option>
+                  <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
             </div>
@@ -210,14 +235,15 @@ const ManageBookings = () => {
                   <th>Status</th>
                   <th>Guests</th>
                   <th>Booking Price</th>
+                  {/* <th>Sunbeds Booked</th> */}
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {bookings.length > 0 ? (
                   bookings.map((booking) => (
-                    <tr key={booking._id}>
-                      <td>{booking.bookingId || (booking._id ? `BBK${String(booking._id).slice(-3).toUpperCase()}` : '—')}</td>
+                    <tr key={booking.id}>
+                      <td>{booking.bookingId || (booking.id ? `BBK${String(booking.id).slice(-3).toUpperCase()}` : '—')}</td>
                       <td>{booking.beach?.name || 'N/A'}</td>
                       <td>{booking.customerName}</td>
                       <td>{new Date(booking.checkInDate).toLocaleString()}</td>
@@ -225,12 +251,14 @@ const ManageBookings = () => {
                       <td><span className={`badge ${booking.status}`}>{booking.status}</span></td>
                       <td>{booking.numberOfGuests}</td>
                       <td>${Number(booking.totalAmount || 0).toFixed(2)}</td>
+                      <td>{booking.bookedSunbedsCount || 0}</td>
                       <td>
                         <div className="row-actions">
                           <button 
                             className="btn" 
                             title="Modify" 
-                            onClick={() => handleEditBooking(booking._id)}
+                            onClick={() => handleEditBooking(booking.id)}
+                            
                           >
                             <Edit size={16} />
                           </button>
@@ -239,13 +267,13 @@ const ManageBookings = () => {
                             title="Cancel" 
                             onClick={() => setDeleteConfirm({ 
                               open: true, 
-                              bookingId: booking._id, 
+                              bookingId: booking.id, 
                               customerName: booking.customerName 
                             })}
                           >
                             <Trash2 size={16} />
                           </button>
-                          <button className="btn view" onClick={() => navigate(`/bookings/${booking._id}`)}>View Booking</button>
+                          <button className="btn view" onClick={() => setSelectedBooking(booking) }>View Booking</button>
                         </div>
                       </td>
                     </tr>
@@ -287,6 +315,42 @@ const ManageBookings = () => {
                 >
                   Yes, Cancel Booking
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+       {selectedBooking && (
+          <div className="modal-overlay" onClick={() => setSelectedBooking(null)}>
+            <div className="modal large" onClick={(e) => e.stopPropagation()}>
+              <h3>Booking Details</h3>
+              <p><strong>Customer:</strong> {selectedBooking.customerName}</p>
+              <p><strong>Beach:</strong> {selectedBooking.beach?.name}</p>
+              <p><strong>Status:</strong> <span className={`badge ${selectedBooking.status}`}>{selectedBooking.status}</span></p>
+              <p><strong>Check-in:</strong> {new Date(selectedBooking.checkInDate).toLocaleString()}</p>
+              <p><strong>Check-out:</strong> {new Date(selectedBooking.checkOutDate).toLocaleString()}</p>
+
+              <h4>Booked Sunbeds</h4>
+              {selectedBooking.sunbeds?.length > 0 ? (
+                <div className="sunbed-grid" style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${selectedBooking.zone?.cols || 5}, 1fr)`,
+                  gap: '4px'
+                }}>
+                  {selectedBooking.zone?.sunbeds?.map((bed) => {
+                    const isBooked = selectedBooking.sunbeds.some(s => s.id === bed.id);
+                    return (
+                      <div key={bed.id} className={`sunbed-item ${isBooked ? 'booked' : ''}`}>
+                        {bed.code}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p>No sunbeds booked</p>
+              )}
+
+              <div className="modal-actions">
+                <button className="btn-secondary" onClick={() => setSelectedBooking(null)}>Close</button>
               </div>
             </div>
           </div>

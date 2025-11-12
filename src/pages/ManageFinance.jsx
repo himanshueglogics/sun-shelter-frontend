@@ -51,7 +51,7 @@ const ManageFinance = () => {
       setLoadingPayouts(true);
       const res = await axios.get('/finance/payouts').catch(() => ({ data: [] }));
       const mapped = res.data.map(p => ({
-        id: p._id,
+        id: p.id,
         beach: p.beach?.name || 'Unknown Beach',
         amount: p.amount,
         date: new Date(p.requestedDate).toLocaleDateString(),
