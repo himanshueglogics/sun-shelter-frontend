@@ -684,37 +684,119 @@ input:checked + .slider:before {
 }
 
 /* Responsive */
-@media (max-width: 1200px) {
+@media (max-width: 1024px) {
+
+  /* Header */
+  .integrations-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .tabs {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  /* Grids -> stack to 1 column */
   .integration-grid,
   .payment-cards,
-  .revenue-grid,
   .language-cards,
+  .kpi-grid,
+  .occupancy-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Small screens (max-width: 768px / mobile devices) */
+@media (max-width: 768px) {
+
+  /* Content containers */
+  .integrations-content,
+  .reports-content {
+    padding: 16px;
+  }
+
+  /* Section headers */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .btn-add, .btn-clear {
+    width: 100%;
+  }
+
+  /* Integration Cards */
+  .integration-card,
+  .payment-card,
+  .language-card,
+  .occupancy-chart-card,
+  .occupancy-details-card {
+    padding: 16px;
+  }
+
+  /* Toggle switches row fix */
+  .integration-toggle,
+  .payment-toggle {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  /* Tables – make scrollable on mobile */
+  .legal-table,
+  .error-table,
+  .transactions-table,
+  .payout-table,
+  .occupancy-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Chart container fix */
+  .occupancy-chart-card {
+    text-align: center;
+  }
+
+  /* Legend alignment */
+  .chart-legend {
+    flex-direction: row;
+    justify-content: center;
+    gap: 20px;
+  }
+}
+
+/* Extra small screens (max-width: 480px / small phones) */
+@media (max-width: 480px) {
+
+  h1, h2, h3 {
+    font-size: 90%;
+  }
+
+  .integration-card h3,
+  .payment-header h3,
+  .language-info h4 {
+    font-size: 14px;
+  }
+
+  .btn-configure,
+  .btn-reconnect {
+    padding: 8px;
+    font-size: 13px;
+  }
+
+  /* KPI grid becomes full-width vertical */
   .kpi-grid {
     grid-template-columns: 1fr;
   }
-  .occupancy-grid { grid-template-columns: 1fr; }
-}
 
-@media (max-width: 992px) {
-  .integrations-content,
-  .reports-content { padding: 20px; }
-  .section-header { margin: 24px 0 12px; }
-  .tabs { flex-wrap: wrap; }
-}
-
-@media (max-width: 768px) {
-  .integrations-header { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .integration-grid,
-  .payment-cards,
-  .language-cards,
-  .revenue-grid,
-  .kpi-grid { grid-template-columns: 1fr; }
-  .integrations-content,
-  .reports-content,
-  .payout-section,
-  .insights-section { overflow-x: auto; }
-  .legal-table,
-  .error-table,
-  .payout-table,
-  .transactions-table { min-width: 720px; }
+  /* Reduce padding */
+  .integration-card,
+  .payment-card {
+    padding: 14px;
+  }
 }

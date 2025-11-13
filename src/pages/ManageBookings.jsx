@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import axios from '../api/axios';
 import { Edit, Trash2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import './ManagePage.css';
-import './ManageBookings.css';
 import { toast } from 'react-toastify';
 import { getSocket } from '../services/socket';
 
+import './ManagePage.css';
+import './ManageBookings.css';
+
 const ManageBookings = () => {
-  const navigate = useNavigate();
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
@@ -23,36 +23,31 @@ const ManageBookings = () => {
   const [deleteConfirm, setDeleteConfirm] = useState({ open: false, bookingId: null, customerName: '' });
   const [selectedBooking, setSelectedBooking] = useState(null);
 
-  useEffect(() => {
-    fetchBookings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page,status,beach,checkInFrom,checkInTo]);
+  /** ---------------- NEW: Edit Modal States ---------------- */
+  const [editModal, setEditModal] = useState({ open: false, data: null });
+  const [savingEdit, setSavingEdit] = useState(false);
 
-  useEffect(()=>{
-    const socket=getSocket();
-    const handleBookingCancelled=(payload)=>{
-      console.log("Booking Cancelled",payload)
-      fetchBookings();
-    }
-    const handleBookingCreated=(payload)=>{
-      console.log("Booking created",payload)
-      fetchBookings();
-    }
-    socket.on("booking:cancelled",handleBookingCancelled);
-    socket.on("booking:created",handleBookingCreated);
-    return ()=>{
-      socket.off("booking:cancelled",handleBookingCancelled);
-      socket.off("booking:created",handleBookingCreated);
-    }
-  },[])
+  useEffect(() => { fetchBookings(); }, [page, status, beach, checkInFrom, checkInTo]);
 
   useEffect(() => {
-    // fetch beaches for dropdown
+    const socket = getSocket();
+    socket.on("booking:cancelled", fetchBookings);
+    socket.on("booking:created", fetchBookings);
+    socket.on("booking:updated", fetchBookings);
+
+    return () => {
+      socket.off("booking:cancelled", fetchBookings);
+      socket.off("booking:created", fetchBookings);
+      socket.off("booking:updated", fetchBookings);
+    };
+  }, []);
+
+  useEffect(() => {
     (async () => {
       try {
         const res = await axios.get('/beaches');
         const data = res.data;
-        const list = Array.isArray(data?.beaches) ? data.beaches : (Array.isArray(data) ? data : []);
+        const list = Array.isArray(data?.beaches) ? data.beaches : Array.isArray(data) ? data : [];
         setBeaches(list);
       } catch (e) {
         console.error('Error loading beaches list:', e);
@@ -62,138 +57,138 @@ const ManageBookings = () => {
 
   const fetchBookings = async () => {
     try {
-      if (checkInFrom && checkInTo && new Date(checkInTo)<new Date(checkInFrom)){
-        toast.error("Check-out date cannot be before Check-in date")
-        setLoading(false)
+      if (checkInFrom && checkInTo && new Date(checkInTo) < new Date(checkInFrom)) {
+        toast.error("Check-out date cannot be before Check-in date");
+        setLoading(false);
         return;
       }
-      setLoading(true)
+
+      setLoading(true);
       const params = { page, limit: 10 };
       if (status) params.status = status;
       if (beach) params.beach = beach;
       if (checkInFrom) params.checkInFrom = checkInFrom;
       if (checkInTo) params.checkInTo = checkInTo;
+
       const response = await axios.get('/bookings', { params });
       setBookings(response.data.bookings || []);
       setPages(response.data.totalPages || 1);
-      
-      // Fetch real statistics from API
+
       try {
-        const statsResponse = await axios.get('/bookings/stats');
-        setStats({
-          total: statsResponse.data.total || 0,
-          active: statsResponse.data.active || 0,
-          cancelled: statsResponse.data.cancelled || 0
-        });
-      } catch (statsError) {
-        console.error('Error fetching booking stats:', statsError);
-        // Fallback: calculate from all bookings if stats endpoint fails
-        const allBookingsResponse = await axios.get('/bookings', { params: { limit: 10000 } });
-        const allBookings = allBookingsResponse.data.bookings || [];
-        const activeCount = allBookings.filter(b => 
-         [  'confirmed','pending', 'completed'].includes(b.status)
-        ).length;
-        const cancelledCount = allBookings.filter(b => b.status === 'cancelled').length;  
-        setStats({ 
-          total: allBookings.length, 
-          active: activeCount, 
-          cancelled: cancelledCount 
-        });
+        const statsResp = await axios.get('/bookings/stats');
+        setStats(statsResp.data);
+      } catch (err) {
+        console.error("Stats error:", err);
+        setStats({ total: 0, active: 0, cancelled: 0 });
       }
+
     } catch (error) {
-      console.error('Error fetching bookings:', error);
-      // Set default stats on error
+      console.error("Error fetching bookings:", error);
       setStats({ total: 0, active: 0, cancelled: 0 });
     } finally {
       setLoading(false);
     }
   };
 
-  const applyFilters = () => {
-    setPage(1);
-    // setLoading(true);
-    // fetchBookings();
-  };
+  const applyFilters = () => setPage(1);
 
+  /** ---------------- DELETE BOOKING ---------------- */
   const handleDeleteBooking = async () => {
     try {
       await axios.delete(`/bookings/${deleteConfirm.bookingId}`);
       setDeleteConfirm({ open: false, bookingId: null, customerName: '' });
-      await fetchBookings();
-      toast.success('Booking cancelled successfully!');
+      fetchBookings();
+      toast.success("Booking cancelled successfully!");
     } catch (err) {
-      console.error('Delete booking failed:', err);
-      toast.error(err.response?.data?.message || 'Failed to cancel booking');
+      toast.error(err.response?.data?.message || "Failed to cancel booking");
     }
   };
 
-  const handleEditBooking = (bookingId) => {
-    navigate(`/editbooking/${bookingId}`);
+  /** ---------------- EDIT BOOKING MODAL HANDLERS ---------------- */
+
+  // Open Edit Modal
+  const handleEditBooking = (booking) => {
+    setEditModal({ open: true, data: { ...booking } });
+  };
+
+  // Update fields
+  const updateEditField = (field, value) => {
+    setEditModal(prev => ({
+      ...prev,
+      data: { ...prev.data, [field]: value }
+    }));
+  };
+
+  // Save edited booking
+  const saveEditedBooking = async () => {
+    try {
+      setSavingEdit(true);
+      await axios.put(`/bookings/${editModal.data.id}`, editModal.data);
+
+      const socket = getSocket();
+      socket.emit("booking:update", editModal.data);
+
+      toast.success("Booking updated successfully!");
+      setEditModal({ open: false, data: null });
+      fetchBookings();
+    } catch (err) {
+      console.error("Error saving booking:", err);
+      toast.error("Failed to update booking");
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   return (
     <div className="dashboard-layout">
       <Sidebar />
+
       <div className="dashboard-content">
         <div className="manage-header">
           <h1>Manage Bookings</h1>
-          {/* <button className="add-button">
-            <Plus size={20} />
-            <span>Add Booking</span>
-          </button> */}
         </div>
 
+        {/* ---------- STATS ---------- */}
         <div className="stats-cards">
           <div className="stat-card stat-total-bookings">
             <div className="stat-content">
               <div className="stat-label">Total Bookings</div>
-              <div className="stat-value">{stats.total.toLocaleString()}</div>
+              <div className="stat-value">{stats.total}</div>
             </div>
-            <div className="stat-icon blue">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-            </div>
+            <div className="stat-icon blue"></div>
           </div>
+
           <div className="stat-card stat-active-bookings">
             <div className="stat-content">
               <div className="stat-label">Active Bookings</div>
-              <div className="stat-value">{stats.active.toLocaleString()}</div>
+              <div className="stat-value">{stats.active}</div>
             </div>
-            <div className="stat-icon green">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-              </svg>
-            </div>
+            <div className="stat-icon green"></div>
           </div>
+
           <div className="stat-card stat-cancelled-bookings">
             <div className="stat-content">
-              <div className="stat-label">Cancelled Bookings</div>
-              <div className="stat-value">{stats.cancelled.toLocaleString()}</div>
+              <div className="stat-label">Cancelled</div>
+              <div className="stat-value">{stats.cancelled}</div>
             </div>
-            <div className="stat-icon red">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-            </div>
+            <div className="stat-icon red"></div>
           </div>
         </div>
 
+        {/* ---------- FILTERS ---------- */}
         <div className="filters-panel">
           <div className="filters-grid">
+
             <div className="field">
-              <label>Check-in Date</label>
+              <label>Check-in</label>
               <input type="date" value={checkInFrom} onChange={(e) => setCheckInFrom(e.target.value)} />
             </div>
+
             <div className="field">
-              <label>Check-out Date</label>
+              <label>Check-out</label>
               <input type="date" value={checkInTo} onChange={(e) => setCheckInTo(e.target.value)} />
             </div>
+
             <div className="field">
               <label>Status</label>
               <select value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -204,150 +199,212 @@ const ManageBookings = () => {
                 <option value="completed">Completed</option>
               </select>
             </div>
+
             <div className="field">
-              <label>Beach Name</label>
-              <select value={beach} onChange={(e)=>setBeach(e.target.value)}>
+              <label>Beach</label>
+              <select value={beach} onChange={(e) => setBeach(e.target.value)}>
                 <option value="">All Beaches</option>
-                {(Array.isArray(beaches) ? beaches : []).map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
+                {beaches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
             </div>
+
           </div>
+
           <div className="filters-actions">
-            <button className="btn-outline" onClick={() => { setStatus(''); setBeach(''); setCheckInFrom(''); setCheckInTo(''); }}>Clear Filters</button>
-            <button className="btn-primary" onClick={applyFilters}>Apply Filters</button>
+            <button className="btn-outline" onClick={() => {
+              setStatus(''); setBeach(''); setCheckInFrom(''); setCheckInTo('');
+            }}>
+              Clear Filters
+            </button>
+
+            <button className="btn-primary" onClick={applyFilters}>Apply</button>
           </div>
         </div>
 
+        {/* ---------- TABLE ---------- */}
         {loading ? (
           <div className="loading">Loading bookings...</div>
         ) : (
           <div className="table-container bookings-card">
             <table className="data-table">
+
               <thead>
                 <tr>
                   <th>Booking ID</th>
-                  <th>Beach Name</th>
-                  <th>Customer Name</th>
-                  <th>Check-in Date & Time</th>
-                  <th>Check-out Date & Time</th>
+                  <th>Beach</th>
+                  <th>Customer</th>
+                  <th>Check-in</th>
+                  <th>Check-out</th>
                   <th>Status</th>
                   <th>Guests</th>
-                  <th>Booking Price</th>
-                  {/* <th>Sunbeds Booked</th> */}
+                  <th>Price</th>
                   <th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
-                {bookings.length > 0 ? (
-                  bookings.map((booking) => (
-                    <tr key={booking.id}>
-                      <td>{booking.bookingId || (booking.id ? `BBK${String(booking.id).slice(-3).toUpperCase()}` : '—')}</td>
-                      <td>{booking.beach?.name || 'N/A'}</td>
-                      <td>{booking.customerName}</td>
-                      <td>{new Date(booking.checkInDate).toLocaleString()}</td>
-                      <td>{new Date(booking.checkOutDate).toLocaleString()}</td>
-                      <td><span className={`badge ${booking.status}`}>{booking.status}</span></td>
-                      <td>{booking.numberOfGuests}</td>
-                      <td>${Number(booking.totalAmount || 0).toFixed(2)}</td>
-                      <td>{booking.bookedSunbedsCount || 0}</td>
-                      <td>
-                        <div className="row-actions">
-                          <button 
-                            className="btn" 
-                            title="Modify" 
-                            onClick={() => handleEditBooking(booking.id)}
-                            
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            className="btn" 
-                            title="Cancel" 
-                            onClick={() => setDeleteConfirm({ 
-                              open: true, 
-                              bookingId: booking.id, 
-                              customerName: booking.customerName 
-                            })}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                          <button className="btn view" onClick={() => setSelectedBooking(booking) }>View Booking</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="8" className="no-data">No bookings found</td>
+                {bookings.map((booking) => (
+                  <tr key={booking.id}>
+                    <td>{booking.bookingId}</td>
+                    <td>{booking.beach?.name}</td>
+                    <td>{booking.customerName}</td>
+                    <td>{new Date(booking.checkInDate).toLocaleString()}</td>
+                    <td>{new Date(booking.checkOutDate).toLocaleString()}</td>
+                    <td><span className={`badge ${booking.status}`}>{booking.status}</span></td>
+                    <td>{booking.numberOfGuests}</td>
+                    <td>${Number(booking.totalAmount).toFixed(2)}</td>
+
+                    <td>
+                      <div className="row-actions">
+
+                        {/* EDIT BUTTON (Modal) */}
+                        <button className="btn" onClick={() => handleEditBooking(booking)}>
+                          <Edit size={16} />
+                        </button>
+
+                        {/* DELETE */}
+                        <button className="btn" onClick={() =>
+                          setDeleteConfirm({
+                            open: true,
+                            bookingId: booking.id,
+                            customerName: booking.customerName
+                          })
+                        }>
+                          <Trash2 size={16} />
+                        </button>
+
+                        {/* VIEW */}
+                        <button className="btn view" onClick={() => setSelectedBooking(booking)}>
+                          View
+                        </button>
+
+                      </div>
+                    </td>
+
                   </tr>
-                )}
+                ))}
               </tbody>
+
             </table>
+
             <div className="table-footer">
-              <button disabled={page<=1} onClick={() => setPage(p => Math.max(1, p-1))}>Previous</button>
-              <span className="pagination-text">Page {page} of {pages}</span>
-              <button disabled={page>=pages} onClick={() => setPage(p => Math.min(pages, p+1))}>Next</button>
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</button>
+              <span>Page {page} of {pages}</span>
+              <button disabled={page >= pages} onClick={() => setPage(p => p + 1)}>Next</button>
             </div>
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
-        {deleteConfirm.open && (
-          <div className="modal-overlay" onClick={() => setDeleteConfirm({ open: false, bookingId: null, customerName: '' })}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3>Cancel Booking</h3>
-              <p style={{ marginTop: '16px', marginBottom: '24px', color: '#666' }}>
-                Are you sure you want to cancel the booking for <strong>{deleteConfirm.customerName}</strong>? This action cannot be undone.
-              </p>
-              <div className="modal-actions" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button 
-                  className="btn-secondary" 
-                  onClick={() => setDeleteConfirm({ open: false, bookingId: null, customerName: '' })}
-                >
-                  No, Keep It
+        {/* ----------- EDIT MODAL ----------- */}
+        {editModal.open && editModal.data && (
+          <div className="modal-overlay" onClick={() => setEditModal({ open: false, data: null })}>
+            <div className="modal large" onClick={(e) => e.stopPropagation()}>
+              <h3>Edit Booking</h3>
+
+              <div className="form-grid">
+
+                <div className="field">
+                  <label>Customer Name</label>
+                  <input
+                    type="text"
+                    value={editModal.data.customerName}
+                    onChange={(e) => updateEditField("customerName", e.target.value)}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    value={editModal.data.customerEmail || ""}
+                    onChange={(e) => updateEditField("customerEmail", e.target.value)}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Phone</label>
+                  <input
+                    type="text"
+                    value={editModal.data.customerPhone || ""}
+                    onChange={(e) => updateEditField("customerPhone", e.target.value)}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Status</label>
+                  <select
+                    value={editModal.data.status}
+                    onChange={(e) => updateEditField("status", e.target.value)}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label>Check-in</label>
+                  <input
+                    type="datetime-local"
+                    value={new Date(editModal.data.checkInDate).toISOString().slice(0, 16)}
+                    onChange={(e) => updateEditField("checkInDate", e.target.value)}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Check-out</label>
+                  <input
+                    type="datetime-local"
+                    value={new Date(editModal.data.checkOutDate).toISOString().slice(0, 16)}
+                    onChange={(e) => updateEditField("checkOutDate", e.target.value)}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Total Amount</label>
+                  <input
+                    type="number"
+                    value={editModal.data.totalAmount}
+                    onChange={(e) => updateEditField("totalAmount", Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>Guests</label>
+                  <input
+                    type="number"
+                    value={editModal.data.numberOfGuests}
+                    onChange={(e) => updateEditField("numberOfGuests", Number(e.target.value))}
+                  />
+                </div>
+
+              </div>
+
+              <div className="modal-actions">
+                <button className="btn-secondary" onClick={() => setEditModal({ open: false, data: null })}>
+                  Cancel
                 </button>
-                <button 
-                  className="btn-primary" 
-                  style={{ background: '#e53935' }}
-                  onClick={handleDeleteBooking}
-                >
-                  Yes, Cancel Booking
+
+                <button className="btn-primary" disabled={savingEdit} onClick={saveEditedBooking}>
+                  {savingEdit ? "Saving..." : "Save Changes"}
                 </button>
               </div>
+
             </div>
           </div>
         )}
-       {selectedBooking && (
+
+        {/* ----------- VIEW MODAL (unchanged) ----------- */}
+        {selectedBooking && (
           <div className="modal-overlay" onClick={() => setSelectedBooking(null)}>
             <div className="modal large" onClick={(e) => e.stopPropagation()}>
               <h3>Booking Details</h3>
               <p><strong>Customer:</strong> {selectedBooking.customerName}</p>
               <p><strong>Beach:</strong> {selectedBooking.beach?.name}</p>
-              <p><strong>Status:</strong> <span className={`badge ${selectedBooking.status}`}>{selectedBooking.status}</span></p>
+              <p><strong>Status:</strong> {selectedBooking.status}</p>
               <p><strong>Check-in:</strong> {new Date(selectedBooking.checkInDate).toLocaleString()}</p>
               <p><strong>Check-out:</strong> {new Date(selectedBooking.checkOutDate).toLocaleString()}</p>
-
-              <h4>Booked Sunbeds</h4>
-              {selectedBooking.sunbeds?.length > 0 ? (
-                <div className="sunbed-grid" style={{
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(${selectedBooking.zone?.cols || 5}, 1fr)`,
-                  gap: '4px'
-                }}>
-                  {selectedBooking.zone?.sunbeds?.map((bed) => {
-                    const isBooked = selectedBooking.sunbeds.some(s => s.id === bed.id);
-                    return (
-                      <div key={bed.id} className={`sunbed-item ${isBooked ? 'booked' : ''}`}>
-                        {bed.code}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p>No sunbeds booked</p>
-              )}
 
               <div className="modal-actions">
                 <button className="btn-secondary" onClick={() => setSelectedBooking(null)}>Close</button>
@@ -355,6 +412,23 @@ const ManageBookings = () => {
             </div>
           </div>
         )}
+
+        {/* ----------- DELETE CONFIRM MODAL ----------- */}
+        {deleteConfirm.open && (
+          <div className="modal-overlay" onClick={() => setDeleteConfirm({ open: false, bookingId: null, customerName: '' })}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <h3>Cancel Booking</h3>
+              <p>Are you sure you want to cancel booking for <strong>{deleteConfirm.customerName}</strong>?</p>
+
+              <div className="modal-actions">
+                <button className="btn-secondary" onClick={() => setDeleteConfirm({ open: false, bookingId: null, customerName: '' })}>No</button>
+                <button className="btn-primary" style={{ background: "#e53935" }} onClick={handleDeleteBooking}>Yes, Cancel</button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

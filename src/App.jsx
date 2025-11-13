@@ -6,7 +6,7 @@ import Dashboard from './pages/Dashboard';
 import ResetPassword from './pages/ResetPassword';
 import ManageBeaches from './pages/ManageBeaches';
 import ManageBookings from './pages/ManageBookings';
-import EditBooking from './pages/EditBooking';
+// import EditBooking from './pages/EditBooking';
 import ManageFinance from './pages/ManageFinance';
 import ManageAdmins from './pages/ManageAdmins';
 import ManageIntegrations from './pages/ManageIntegrations';
@@ -33,7 +33,8 @@ function App() {
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/manage-beaches" element={<PrivateRoute><ManageBeaches /></PrivateRoute>} />
         <Route path="/add-new-beach" element={<PrivateRoute><AddNewBeach /></PrivateRoute>} />
-        <Route path="/editbooking/:id" element={<PrivateRoute><EditBooking /></PrivateRoute>} />
+        <Route path="/edit-beach/:id" element={<PrivateRoute><AddNewBeach /></PrivateRoute>} />
+        {/* <Route path="/editbooking/:id" element={<PrivateRoute><EditBooking /></PrivateRoute>} /> */}
         <Route path="/manage-bookings" element={<PrivateRoute><ManageBookings /></PrivateRoute>} />
         <Route path="/bookings/:id" element={<PrivateRoute><BookingDetail /></PrivateRoute>} />
         <Route path="/manage-finance" element={<PrivateRoute><ManageFinance /></PrivateRoute>} />

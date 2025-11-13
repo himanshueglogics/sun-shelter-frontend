@@ -235,39 +235,32 @@
 }
 
 @media (max-width: 768px) {
-  .top-logo-container {
-    padding: 20px;
+  .wave-decoration {
+    position: fixed;   /* <— keeps it behind layout */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 35vh;
+    z-index: -10;      /* <— truly behind everything */
+    pointer-events: none;
   }
 
-  .welcome-section {
-    padding: 100px 20px 0 20px;
-    max-width: 100%;
-    height: auto;
-    gap: 10px;
-  }
 
-  .progress-bar {
-    width: 140px;
-    height: 6px;
-    margin-bottom: 50vh;
+  .signin-form-container {
+    position: relative;
+    z-index: 11;           /* Ensure the form itself is on top */
+    background-color: #ffffffee; /* Slight transparency for better view */
+    backdrop-filter: blur(2px);
   }
+}
 
-  .welcome-title {
-    font-size: 28px;
-  }
-
-  .welcome-subtitle {
-    font-size: 14px;
-    margin-bottom: 30px;
+/* ========= VERY SMALL DEVICES ========= */
+@media (max-width: 480px) {
+  .wave-decoration {
+    height: 180px;         /* Smaller mh for shorter screens */
   }
 
   .signin-right {
-    padding: 24px;
-  }
-
-  .signin-form-container {
-    max-width: 100%;
-    padding: 24px 20px;
-    border-radius: 12px;
+    margin-top: -100px;
   }
 }

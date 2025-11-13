@@ -139,7 +139,9 @@ const ManageAdmins = () => {
                       <div className="info-row"><Mail size={16} color="#4A90E2" /> {u.email}</div>
                       <div className="info-row"><Phone size={16} color="#4A90E2" /> {u.phone || '—'}</div>
                     </div>
-                    <button className="remove-btn" onClick={() => handleRemove(u.id)}>Remove</button>
+                    <div className='removebuttoncontainer'>
+                        <button className="remove-btn" onClick={() => handleRemove(u.id)} style={{background: '#FDB022',color:"white"}}>Remove</button>
+                    </div>
                   </div>
                 ))
             ) : (

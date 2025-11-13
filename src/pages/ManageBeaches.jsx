@@ -187,7 +187,7 @@ const ManageBeaches = () => {
 
         <h2 className="section-title">Quick Stats</h2>
         <div className="stats-grid">
-          <div className="stat-card stat-total-beaches">
+          <div className="stat-card stat-total-beaches" style={{backgroundColor:"#b6cfdb"}}>
             <div className="stat-info">
               <div className="stat-label">Total Beaches Managed</div>
               <div className="stat-value">{stats.totalBeaches}</div>
@@ -196,7 +196,7 @@ const ManageBeaches = () => {
               <Building2 size={22} />
             </div>
           </div>
-          <div className="stat-card stat-active-admins">
+          <div className="stat-card stat-active-admins" style={{backgroundColor:"#ddc591"}}>
             <div className="stat-info">
               <div className="stat-label">Active Admins</div>
               <div className="stat-value">{stats.activeAdmins}</div>
