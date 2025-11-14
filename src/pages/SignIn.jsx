@@ -24,8 +24,12 @@ const SignIn = () => {
     setError('');
     setLoading(true);
 
+
+    console.log( process.env.REACT_APP_API_BASE)
+    
     try {
       const response = await axios.post('/auth/login', formData);
+      console.log(response)
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       navigate('/dashboard');

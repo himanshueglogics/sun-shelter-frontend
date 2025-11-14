@@ -9,6 +9,14 @@ import './ManageIntegrations.css';
 const ManageIntegrations = () => {
   const [activeTab, setActiveTab] = useState('integrations');
 
+  // Add Integration Modal State
+  const [showAddIntegration, setShowAddIntegration] = useState(false);
+  const [newIntegration, setNewIntegration] = useState({
+    name: '',
+    type: '',
+    apiKey: ''
+  });
+
   // Dummy data for integrations
   const [weatherEnabled, setWeatherEnabled] = useState(true);
   const [mapsEnabled, setMapsEnabled] = useState(true);
@@ -60,7 +68,9 @@ const ManageIntegrations = () => {
   const testWeatherConnection = async () => {
     try {
       const res = await axios.post('/integrations/weather/test');
-      toast.success(res.data?.message || 'Weather API connection successful');
+      if (res){
+        toast.success(res.data?.message || 'Weather API connection successful');
+      }
     } catch (e) {
       toast.error(e.response?.data?.message || 'Weather API test failed');
     }
@@ -69,7 +79,9 @@ const ManageIntegrations = () => {
   const testMapsConnection = async () => {
     try {
       const res = await axios.post('/integrations/maps/test');
-      toast.success(res.data?.message || 'Maps API connection successful');
+      if (res){
+        toast.success(res.data?.message || 'Maps API connection successful');
+      }
     } catch (e) {
       toast.error(e.response?.data?.message || 'Maps API test failed');
     }
@@ -123,7 +135,9 @@ const ManageIntegrations = () => {
   const reconnectStripe = async () => {
     try {
       const res = await axios.post('/integrations/stripe/reconnect');
-      toast.success(res.data?.message || 'Stripe reconnected');
+      if (res){
+        toast.success(res.data?.message || 'Stripe reconnected');
+      }
     } catch (e) {
       toast.error(e.response?.data?.message || 'Stripe reconnect failed');
     }
@@ -152,6 +166,28 @@ const ManageIntegrations = () => {
     toast.info('Add New payment method flow coming soon');
   };
 
+  // Add Integration handler
+  const handleAddIntegration = async () => {
+    // simple validation
+    if (!newIntegration.name || !newIntegration.type || !newIntegration.apiKey) {
+      toast.error('All fields are required.');
+      return;
+    }
+
+    try {
+      await axios.post('/integrations', newIntegration);
+      toast.success('Integration added successfully!');
+
+      // Reset & close modal
+      setShowAddIntegration(false);
+      setNewIntegration({ name: '', type: '', apiKey: '' });
+
+      // Optionally: reload or update integrations list (not implemented here)
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to add integration.');
+    }
+  };
+
   return (
     <div className="dashboard-layout">
       <Sidebar />
@@ -159,13 +195,13 @@ const ManageIntegrations = () => {
         <div className="integrations-header">
           <h1>Integrations Management</h1>
           <div className="tabs">
-            <button 
+            <button
               className={`tab ${activeTab === 'integrations' ? 'active' : ''}`}
               onClick={() => setActiveTab('integrations')}
             >
               Integrations
             </button>
-            <button 
+            <button
               className={`tab ${activeTab === 'reports' ? 'active' : ''}`}
               onClick={() => setActiveTab('reports')}
             >
@@ -176,7 +212,19 @@ const ManageIntegrations = () => {
 
         {activeTab === 'integrations' ? (
           <div className="integrations-content">
-            <p className="subtitle">Manage and configure third-party services for your beach rental PMS. Check all integrations.</p>
+            <p className="subtitle">
+              Manage and configure third-party services for your beach rental PMS. Check all integrations.
+            </p>
+
+            {/* Add Integration Button - Option A (under subtitle) */}
+            <div className="add-integration-wrapper">
+              <button
+                className="btn-add-integration"
+                onClick={() => setShowAddIntegration(true)}
+              >
+                + Add Integration
+              </button>
+            </div>
 
             {/* Weather & Maps Section */}
             <div className="integration-grid">
@@ -537,6 +585,52 @@ const ManageIntegrations = () => {
           </div>
         )}
       </div>
+
+      {/* Add Integration Modal */}
+      {showAddIntegration && (
+        <div className="modal-overlay" onMouseDown={() => setShowAddIntegration(false)}>
+          <div className="modal-card" onMouseDown={(e) => e.stopPropagation()}>
+            <h2>Add New Integration</h2>
+
+            <label className="modal-label">Integration Name</label>
+            <input
+              className="modal-input"
+              type="text"
+              placeholder="e.g. OpenWeatherMap, Google Maps, Stripe"
+              value={newIntegration.name}
+              onChange={(e) => setNewIntegration({ ...newIntegration, name: e.target.value })}
+            />
+
+            <label className="modal-label">Integration Type</label>
+            <select
+              className="modal-input"
+              value={newIntegration.type}
+              onChange={(e) => setNewIntegration({ ...newIntegration, type: e.target.value })}
+            >
+              <option value="">Select Type</option>
+              <option value="weather">Weather</option>
+              <option value="maps">Maps</option>
+              <option value="payment">Payment Gateway</option>
+              <option value="analytics">Analytics</option>
+              <option value="communication">Messaging / Communication</option>
+            </select>
+
+            <label className="modal-label">API Key / Credentials</label>
+            <input
+              className="modal-input"
+              type="text"
+              placeholder="Enter API Key or connection string"
+              value={newIntegration.apiKey}
+              onChange={(e) => setNewIntegration({ ...newIntegration, apiKey: e.target.value })}
+            />
+
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setShowAddIntegration(false)}>Cancel</button>
+              <button className="modal-save" onClick={handleAddIntegration}>Add Integration</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -2,8 +2,11 @@ import axios from 'axios';
 import { getSocket } from '../services/socket';
 import { logout } from '../utils/auth';
 
+const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:5000/api";
+// const API_BASE='https://wagonless-byron-noninclusively.ngrok-free.dev/api' || "http://localhost:5000/api";
+
 const instance = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: API_BASE,
   headers: {
     'Content-Type': 'application/json'
   }
