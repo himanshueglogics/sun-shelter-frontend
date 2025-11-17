@@ -1,199 +1,351 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axios from '../api/axios';
 import Sidebar from '../components/Sidebar';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { Trash } from "lucide-react";
 import './ManagePage.css';
 import './ManageIntegrations.css';
 
 const ManageIntegrations = () => {
   const [activeTab, setActiveTab] = useState('integrations');
 
-  // Add Integration Modal State
+  // Add/Edit Integration Modal
   const [showAddIntegration, setShowAddIntegration] = useState(false);
   const [newIntegration, setNewIntegration] = useState({
+    id: null,
     name: '',
     type: '',
-    apiKey: ''
+    provider: '',
+    apiKey: '',
+    enabled: true
   });
 
-  // Dummy data for integrations
-  const [weatherEnabled, setWeatherEnabled] = useState(true);
-  const [mapsEnabled, setMapsEnabled] = useState(true);
-  const [stripeEnabled, setStripeEnabled] = useState(true);
-  const [paypalEnabled, setPaypalEnabled] = useState(false);
-  const [englishEnabled, setEnglishEnabled] = useState(true);
-  const [portugueseEnabled, setPortugueseEnabled] = useState(false);
+  // Add Document modal
+  const [showAddDocumentModal, setShowAddDocumentModal] = useState(false);
+  const [newDocument, setNewDocument] = useState({
+    type: '',
+    lastUpdated: ''
+  });
 
-  const [errorLogs, setErrorLogs] = useState([
-    { timestamp: '2024-11-04 14:32:15', source: 'Weather API', message: 'API rate limit exceeded. Upgrade needed.', severity: 'Critical' },
-    { timestamp: '2024-11-04 12:18:42', source: 'Maps Integration', message: 'Unable to fetch location coordinates for beach', severity: 'Warning' },
-    { timestamp: '2024-11-04 09:45:23', source: 'Stripe', message: 'Payment webhook validation failed. Check endpoint.', severity: 'Warning' },
-    { timestamp: '2024-11-03 18:22:10', source: 'PayPal', message: 'Connection timeout after 30s', severity: 'Error' }
-  ]);
+  // Confirm modal
+  const [confirm, setConfirm] = useState({
+    visible: false,
+    message: '',
+    onConfirm: null
+  });
 
-  const [recentTransactions] = useState([
-    { id: 'TXN001', date: '2024-10-29', amount: '$1,120.00', status: 'Completed' },
-    { id: 'TXN002', date: '2024-10-24', amount: '$3,150.00', status: 'Pending' },
-    { id: 'TXN003', date: '2024-10-20', amount: '$890.00', status: 'Completed' },
-    { id: 'TXN004', date: '2024-10-22', amount: '$1,920.00', status: 'Pending' },
-    { id: 'TXN005', date: '2024-10-21', amount: '$1,450.00', status: 'Completed' },
-    { id: 'TXN006', date: '2024-10-20', amount: '$750.00', status: 'Pending' },
-    { id: 'TXN007', date: '2024-10-16', amount: '$1,185.00', status: 'Completed' }
-  ]);
+  // Real DB Integrations
+  const [integrations, setIntegrations] = useState([]);
 
-  const [occupancyData] = useState([
-    { property: 'Coastal Breeze Suites', unitType: 'Studio', occupancy: '92%', available: 3 },
-    { property: 'Mountain View Lodge', unitType: '2-Bedroom', occupancy: '85%', available: 5 },
-    { property: 'City Central Apartments', unitType: '1-Bedroom', occupancy: '88%', available: 4 },
-    { property: 'Riverside Cottages', unitType: '3-Bedroom', occupancy: '78%', available: 7 },
-    { property: 'Suburban Manor Homes', unitType: '2-Bedroom', occupancy: '91%', available: 2 }
-  ]);
+  // Overview data
+  const [errorLogs, setErrorLogs] = useState([]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [occupancyData, setOccupancyData] = useState([]);
+  const [payoutReports, setPayoutReports] = useState([]);
+  const [occupancyChartData, setOccupancyChartData] = useState([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [averageOccupancy, setAverageOccupancy] = useState(0);
+  const [legalDocuments, setLegalDocuments] = useState([]);
+  const [languages, setLanguages] = useState([]);
 
-  const [payoutReports] = useState([
-    { id: 'PAY7001', date: '2024-09-30', amount: '$3,500.00', status: 'Processed', method: 'Bank Transfer' },
-    { id: 'PAY7002', date: '2024-08-15', amount: '$2,100.00', status: 'Pending', method: 'PayPal' },
-    { id: 'PAY7003', date: '2024-08-24', amount: '$650.00', status: 'Completed', method: 'Stripe' },
-    { id: 'PAY7004', date: '2024-08-22', amount: '$3,220.00', status: 'Pending', method: 'Bank Transfer' },
-    { id: 'PAY7005', date: '2024-08-22', amount: '$1,900.00', status: 'Processed', method: 'PayPal' },
-    { id: 'PAY7006', date: '2024-08-22', amount: '$850.00', status: 'Pending', method: 'Stripe' }
-  ]);
+  // Payment gateways (Stripe / PayPal)
+  const [stripeGateway, setStripeGateway] = useState({
+    apiKey: '',
+    secretKey: '',
+    merchantId: '',
+    enabled: false,
+  });
+  const [paypalGateway, setPaypalGateway] = useState({
+    apiKey: '',
+    secretKey: '',
+    merchantId: '',
+    enabled: false,
+  });
+  const [savingStripe, setSavingStripe] = useState(false);
+  const [savingPaypal, setSavingPaypal] = useState(false);
 
-  const [occupancyChartData] = useState([
-    { name: 'Occupied', value: 67, color: '#4A90E2' },
-    { name: 'Available', value: 33, color: '#E8F1FA' }
-  ]);
-
-  // Handlers: keep UI unchanged, add functionality
-  const testWeatherConnection = async () => {
+  // Helper to push errors to UI log
+  const addErrorLog = (source, message, severity = 'Error') => {
     try {
-      const res = await axios.post('/integrations/weather/test');
-      if (res){
-        toast.success(res.data?.message || 'Weather API connection successful');
+      const newLog = {
+        timestamp: new Date().toISOString(),
+        source: source || 'ManageIntegrations',
+        message: message || 'Unknown error',
+        severity: severity || 'Error'
+      };
+      setErrorLogs(prev => [newLog, ...prev]);
+    } catch (e) {
+      console.error('Failed to add error log', e);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchIntegrations();
+    fetchOverview();
+    fetchPaymentGateways();
+  }, []);
+
+  // GET payment gateway settings
+  const fetchPaymentGateways = async () => {
+    try {
+      const res = await axios.get('/integrations/payment-gateways');
+      const data = res.data || {};
+
+      if (data.stripe) setStripeGateway(data.stripe);
+      if (data.paypal) setPaypalGateway(data.paypal);
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to load payment gateways';
+      addErrorLog('Fetch Payment Gateways', msg);
+      toast.error('Failed to load payment gateways');
+    }
+  };
+
+  // SAVE Stripe
+  const saveStripeGateway = async () => {
+    setSavingStripe(true);
+    try {
+      const res = await axios.put('/integrations/payment-gateways/stripe', stripeGateway);
+      setStripeGateway(res.data || stripeGateway);
+      toast.success('Stripe settings saved');
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to save Stripe settings';
+      addErrorLog('Save Stripe', msg);
+      toast.error('Failed to save Stripe settings');
+    } finally {
+      setSavingStripe(false);
+    }
+  };
+
+  // SAVE PayPal
+  const savePaypalGateway = async () => {
+    setSavingPaypal(true);
+    try {
+      const res = await axios.put('/integrations/payment-gateways/paypal', paypalGateway);
+      setPaypalGateway(res.data || paypalGateway);
+      toast.success('PayPal settings saved');
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to save PayPal settings';
+      addErrorLog('Save PayPal', msg);
+      toast.error('Failed to save PayPal settings');
+    } finally {
+      setSavingPaypal(false);
+    }
+  };
+
+  // GET Integrations from DB
+  const fetchIntegrations = async () => {
+    try {
+      const res = await axios.get('/integrations');
+      setIntegrations(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to load integrations';
+      addErrorLog('Fetch Integrations', msg);
+      toast.error('Failed to load integrations');
+      setIntegrations([]);
+    }
+  };
+
+  // Delete integration
+  const confirmDeleteIntegration = (id) => {
+    setConfirm({
+      visible: true,
+      message: 'Delete this integration?',
+      onConfirm: async () => {
+        setConfirm({ visible: false, message: '', onConfirm: null });
+        const prev = integrations;
+        setIntegrations(prev.filter(i => String(i.id) !== String(id)));
+
+        try {
+          await axios.delete(`/integrations/${id}`);
+          toast.success('Integration deleted');
+        } catch (err) {
+          const msg = err?.response?.data?.message || err?.message || 'Failed to delete integration';
+          addErrorLog('Delete Integration', msg);
+          setIntegrations(prev);
+          toast.error('Failed to delete integration');
+        }
       }
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'Weather API test failed');
-    }
+    });
   };
 
-  const testMapsConnection = async () => {
+  // GET Overview reports
+  const fetchOverview = async () => {
     try {
-      const res = await axios.post('/integrations/maps/test');
-      if (res){
-        toast.success(res.data?.message || 'Maps API connection successful');
-      }
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'Maps API test failed');
+      const res = await axios.get('/integrations/overview');
+      const data = res.data || {};
+
+      setErrorLogs(Array.isArray(data.errorLogs) ? data.errorLogs : []);
+      setRecentTransactions(Array.isArray(data.recentTransactions) ? data.recentTransactions : []);
+      setOccupancyData(Array.isArray(data.occupancyData) ? data.occupancyData : []);
+      setPayoutReports(Array.isArray(data.payoutReports) ? data.payoutReports : []);
+      setOccupancyChartData(Array.isArray(data.occupancyChartData) ? data.occupancyChartData : []);
+      setTotalRevenue(typeof data.totalRevenue === 'number' ? data.totalRevenue : 0);
+      setAverageOccupancy(typeof data.averageOccupancy === 'number' ? data.averageOccupancy : 0);
+      setLegalDocuments(Array.isArray(data.legalDocuments) ? data.legalDocuments : []);
+      setLanguages(Array.isArray(data.languages) ? data.languages : []);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to fetch overview';
+      addErrorLog('Fetch Overview', msg);
+      toast.error('Failed to fetch overview');
     }
   };
 
-  const toggleWeather = async () => {
-    const next = !weatherEnabled;
-    setWeatherEnabled(next);
-    try {
-      await axios.post('/integrations/weather/toggle', { enabled: next });
-    } catch (e) {
-      // revert on failure
-      setWeatherEnabled(!next);
-      toast.error(e.response?.data?.message || 'Failed to update Weather setting');
-    }
-  };
-
-  const toggleMaps = async () => {
-    const next = !mapsEnabled;
-    setMapsEnabled(next);
-    try {
-      await axios.post('/integrations/maps/toggle', { enabled: next });
-    } catch (e) {
-      setMapsEnabled(!next);
-      toast.error(e.response?.data?.message || 'Failed to update Maps setting');
-    }
-  };
-
-  const toggleStripeWebhook = async () => {
-    const next = !stripeEnabled;
-    setStripeEnabled(next);
-    try {
-      await axios.post('/integrations/stripe/webhook-toggle', { enabled: next });
-    } catch (e) {
-      setStripeEnabled(!next);
-      toast.error(e.response?.data?.message || 'Failed to update Stripe webhook');
-    }
-  };
-
-  const togglePaypalWebhook = async () => {
-    const next = !paypalEnabled;
-    setPaypalEnabled(next);
-    try {
-      await axios.post('/integrations/paypal/webhook-toggle', { enabled: next });
-    } catch (e) {
-      setPaypalEnabled(!next);
-      toast.error(e.response?.data?.message || 'Failed to update PayPal webhook');
-    }
-  };
-
-  const reconnectStripe = async () => {
-    try {
-      const res = await axios.post('/integrations/stripe/reconnect');
-      if (res){
-        toast.success(res.data?.message || 'Stripe reconnected');
-      }
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'Stripe reconnect failed');
-    }
-  };
-
-  const reconnectPaypal = async () => {
-    try {
-      const res = await axios.post('/integrations/paypal/reconnect');
-      toast.success(res.data?.message || 'PayPal reconnected');
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'PayPal reconnect failed');
-    }
-  };
-
-  const clearErrorLogs = async () => {
-    try {
-      await axios.post('/integrations/logs/clear');
-    } catch (_) {
-      // ignore API failure, still clear locally to keep UI responsive
-    }
-    setErrorLogs([]);
-    toast.info('Integration logs cleared');
-  };
-
-  const addNewPayment = () => {
-    toast.info('Add New payment method flow coming soon');
-  };
-
-  // Add Integration handler
-  const handleAddIntegration = async () => {
-    // simple validation
-    if (!newIntegration.name || !newIntegration.type || !newIntegration.apiKey) {
-      toast.error('All fields are required.');
+  // Add or Edit Integration (single handler)
+  const handleSaveIntegration = async () => {
+    // Basic validation - require name/type/provider/apiKey
+    if (!newIntegration.name || !newIntegration.type || !newIntegration.provider || !newIntegration.apiKey) {
+      toast.error('Name, Type, Provider and API Key are required');
       return;
     }
 
-    try {
-      await axios.post('/integrations', newIntegration);
-      toast.success('Integration added successfully!');
+    // Prepare payload (strip id if null)
+    const payload = {
+      name: newIntegration.name,
+      type: newIntegration.type,
+      provider: newIntegration.provider,
+      apiKey: newIntegration.apiKey,
+      enabled: !!newIntegration.enabled
+    };
 
-      // Reset & close modal
-      setShowAddIntegration(false);
-      setNewIntegration({ name: '', type: '', apiKey: '' });
+    // EDIT MODE
+    if (newIntegration.id) {
+      const id = newIntegration.id;
+      // Optimistic local update
+      const prev = integrations;
+      setIntegrations(prev.map(item => (String(item.id) === String(id) ? { ...item, ...payload, id } : item)));
 
-      // Optionally: reload or update integrations list (not implemented here)
-    } catch (e) {
-      toast.error(e.response?.data?.message || 'Failed to add integration.');
+      try {
+        const res = await axios.put(`/integrations/${id}`, payload);
+        // prefer server response if provided
+        if (res?.data) {
+          setIntegrations(prev => prev.map(item => (String(item.id) === String(id) ? res.data : item)));
+        }
+        toast.success('Integration updated');
+      } catch (e) {
+        addErrorLog('Update Integration', e?.response?.data?.message || e?.message || 'Failed to update');
+        setIntegrations(prev);
+        toast.error('Failed to update integration');
+      } finally {
+        // reset modal state
+        setNewIntegration({ id: null, name: '', type: '', provider: '', apiKey: '', enabled: true });
+        setShowAddIntegration(false);
+      }
+    } 
+    
+    // ADD MODE
+    else {
+      try {
+        const res = await axios.post('/integrations', payload);
+        if (res?.data && res.data.id) {
+          setIntegrations(prev => [res.data, ...prev]);
+        } else {
+          // If the server doesn't return an object, refetch
+          fetchIntegrations();
+        }
+        toast.success('Integration added');
+        setNewIntegration({ id: null, name: '', type: '', provider: '', apiKey: '', enabled: true });
+        setShowAddIntegration(false);
+      } catch (e) {
+        addErrorLog('Add Integration', e?.response?.data?.message || e?.message || 'Failed to add integration');
+        toast.error('Failed to add integration');
+      }
     }
+  };
+
+  // Open Add modal (cleared)
+  const openAddIntegrationModal = () => {
+    setNewIntegration({ id: null, name: '', type: '', provider: '', apiKey: '', enabled: true });
+    setShowAddIntegration(true);
+  };
+
+  // Edit integration - populate modal and open
+  const openEditIntegrationModal = (integration) => {
+    setNewIntegration({
+      id: integration.id,
+      name: integration.name || '',
+      type: integration.type || '',
+      provider: integration.provider || '',
+      apiKey: integration.apiKey || '',
+      enabled: typeof integration.enabled === 'boolean' ? integration.enabled : !!Number(integration.enabled)
+    });
+    setShowAddIntegration(true);
+  };
+
+  // Add Document
+  const handleAddDocument = async () => {
+    if (!newDocument.type) {
+      toast.error('Document type is required');
+      return;
+    }
+
+    // Optimistic UI
+    const doc = { type: newDocument.type, lastUpdated: newDocument.lastUpdated || new Date().toISOString() };
+    setLegalDocuments(prev => [doc, ...prev]);
+
+    setNewDocument({ type: '', lastUpdated: '' });
+    setShowAddDocumentModal(false);
+    toast.success('Document added locally');
+
+    try {
+      await axios.post('/legal-documents', doc);
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to persist document';
+      addErrorLog('Add Document', msg);
+    }
+  };
+
+  // Clear Logs
+  const clearLogs = async () => {
+    try {
+      await axios.post('/integrations/logs/clear');
+      setErrorLogs([]);
+      toast.info('Logs cleared');
+    } catch (e) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to clear logs';
+      addErrorLog('Clear Logs', msg);
+      toast.error('Failed to clear logs');
+    }
+  };
+
+  // Mask API key display
+  const maskApiKey = (key = '') => {
+    if (!key) return '—';
+    return key.length > 8 ? `${key.slice(0, 4)}****${key.slice(-4)}` : key;
+  };
+
+  // English language only
+  const getEnglishLanguage = () => {
+    const english = (languages || []).find(l => l.key === 'english');
+    if (english) return english;
+    return { key: 'english', name: 'English (US)', statusLabel: 'Primary Translation', enabled: true };
+  };
+
+  // Confirm Modal component (inline)
+  const ConfirmModal = ({ visible, message, onCancel, onConfirm }) => {
+    if (!visible) return null;
+    return (
+      <div className="modal-overlay" onMouseDown={onCancel}>
+        <div className="modal-card" onMouseDown={(e) => e.stopPropagation()}>
+          <h3>{message}</h3>
+          <div className="modal-actions">
+            <button className="modal-cancel" onClick={onCancel}>Cancel</button>
+            <button className="modal-save" onClick={onConfirm}>Confirm</button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="dashboard-layout">
       <Sidebar />
+
       <div className="dashboard-content">
         <div className="integrations-header">
           <h1>Integrations Management</h1>
+
           <div className="tabs">
             <button
               className={`tab ${activeTab === 'integrations' ? 'active' : ''}`}
@@ -201,6 +353,7 @@ const ManageIntegrations = () => {
             >
               Integrations
             </button>
+
             <button
               className={`tab ${activeTab === 'reports' ? 'active' : ''}`}
               onClick={() => setActiveTab('reports')}
@@ -210,296 +363,393 @@ const ManageIntegrations = () => {
           </div>
         </div>
 
+        {/* ------------------ INTEGRATIONS TAB ------------------ */}
         {activeTab === 'integrations' ? (
           <div className="integrations-content">
+
             <p className="subtitle">
-              Manage and configure third-party services for your beach rental PMS. Check all integrations.
+              Manage and configure third-party services for your beach rental PMS.
             </p>
 
-            {/* Add Integration Button - Option A (under subtitle) */}
             <div className="add-integration-wrapper">
               <button
                 className="btn-add-integration"
-                onClick={() => setShowAddIntegration(true)}
+                onClick={openAddIntegrationModal}
               >
                 + Add Integration
               </button>
             </div>
 
-            {/* Weather & Maps Section */}
+            {/* ---- INTEGRATIONS LIST ---- */}
             <div className="integration-grid">
-              <div className="integration-card">
-                <h3>Weather API Management</h3>
-                <p className="card-subtitle">Real-time weather updates</p>
-                <div className="integration-field">
-                  <label>API Provider: <strong>OpenWeatherMap</strong></label>
+              {integrations.length === 0 ? (
+                <div className="integration-card">
+                  <h3>No integrations found</h3>
+                  <p className="card-subtitle">Use the Add button to create new integrations.</p>
                 </div>
-                <div className="integration-field">
-                  <label>API Key: <strong>sk_test_51M...****</strong></label>
-                </div>
-                <div className="integration-field">
-                  <label>Status: <span className="status-badge active">Active</span></label>
-                </div>
-                <div className="integration-field">
-                  <label>Last Synced: <strong>2 hours ago</strong></label>
-                </div>
-                <div className="integration-toggle">
-                  <span>Enable Toggle</span>
-                  <label className="switch">
-                    <input type="checkbox" checked={weatherEnabled} onChange={toggleWeather} />
-                    <span className="slider"></span>
-                  </label>
-                </div>
-                <button className="btn-configure" onClick={testWeatherConnection}>Test Connection</button>
-              </div>
+              ) : (
+                integrations.map(integration => (
+                  <div className="integration-card" key={integration.id || integration.name}>
+                    <div className="integration-main-container">
+                      <h3>{integration.name}</h3>
 
-              <div className="integration-card">
-                <h3>Maps API Management</h3>
-                <p className="card-subtitle">Location services</p>
-                <div className="integration-field">
-                  <label>API Provider: <strong>Google Maps</strong></label>
-                </div>
-                <div className="integration-field">
-                  <label>API Key: <strong>AIza...****</strong></label>
-                </div>
-                <div className="integration-field">
-                  <label>Status: <span className="status-badge active">Active</span></label>
-                </div>
-                <div className="integration-field">
-                  <label>Usage Quota: <strong>8,542 / 10,000</strong></label>
-                </div>
-                <div className="integration-toggle">
-                  <span>Enable Toggle</span>
-                  <label className="switch">
-                    <input type="checkbox" checked={mapsEnabled} onChange={toggleMaps} />
-                    <span className="slider"></span>
-                  </label>
-                </div>
-                <button className="btn-configure" onClick={testMapsConnection}>Test Connection</button>
-              </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="btn-edit"
+                          onClick={() => openEditIntegrationModal(integration)}
+                          title="Edit Integration"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          className="icon-button"
+                          onClick={() => confirmDeleteIntegration(integration.id)}
+                          title="Delete Integration"
+                        >
+                          <Trash size={18} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="card-subtitle">{integration.type || 'Integration'}</p>
+
+                    <div className="integration-field">
+                      <label>Provider:</label>
+                      <strong>{integration.provider || '—'}</strong>
+                    </div>
+
+                    <div className="integration-field">
+                      <label>API Key:</label>
+                      <strong>{maskApiKey(integration.apiKey)}</strong>
+                    </div>
+
+                    <div className="integration-field">
+                      <label>Status:</label>
+                      <span className={`status-badge ${integration.enabled ? 'active' : 'inactive'}`}>
+                        {integration.enabled ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+
+                    <div className="integration-field">
+                      <label>Created:</label>
+                      <strong>{integration.createdAt ? new Date(integration.createdAt).toLocaleDateString() : '—'}</strong>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
-            {/* Payment Gateway Settings */}
-            <div className="section-header">
+            {/* ---------------- PAYMENT GATEWAY SETTINGS ---------------- */}
+            <div className="section-header payment-header-main">
               <h2>Payment Gateway Settings</h2>
-              <button className="btn-add" onClick={addNewPayment}>+ Add New</button>
+              <p className="payment-subtitle">Manage Stripe and PayPal configurations.</p>
             </div>
 
-            <div className="payment-cards">
-              <div className="payment-card">
-                <div className="payment-header">
+            <div className="payment-gateway-wrapper">
+
+              {/* ----- STRIPE ----- */}
+              <div className="payment-gateway-card">
+                <div className="payment-gateway-title-row">
                   <h3>Stripe</h3>
-                  <span className="status-badge connected">Connected</span>
+                  <span className={`gateway-status ${stripeGateway.enabled ? 'enabled' : 'disabled'}`}>
+                    {stripeGateway.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
                 </div>
-                <div className="payment-field">
-                  <label>Account ID</label>
-                  <span>acc_1234567890</span>
+
+                <div className="payment-gateway-grid">
+                  <div className="payment-field-column">
+                    <label>API Key</label>
+                    <input
+                      className="payment-input"
+                      value={stripeGateway.apiKey}
+                      onChange={(e) => setStripeGateway({ ...stripeGateway, apiKey: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="payment-field-column">
+                    <label>Secret Key</label>
+                    <input
+                      className="payment-input"
+                      value={stripeGateway.secretKey}
+                      onChange={(e) => setStripeGateway({ ...stripeGateway, secretKey: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="payment-field">
-                  <label>Connected At</label>
-                  <span>Oct 15, 2024</span>
+
+                <div className="payment-field-column">
+                  <label>Merchant ID</label>
+                  <input
+                    className="payment-input"
+                    value={stripeGateway.merchantId}
+                    onChange={(e) => setStripeGateway({ ...stripeGateway, merchantId: e.target.value })}
+                  />
                 </div>
-                <div className="payment-field">
-                  <label>Last Payment</label>
-                  <span>2 days ago</span>
+
+                <div className="payment-gateway-footer">
+                  <div className="payment-toggle">
+                    <span>Enable Gateway</span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={stripeGateway.enabled}
+                        onChange={(e) => setStripeGateway({ ...stripeGateway, enabled: e.target.checked })}
+                      />
+                      <span className="slider"></span>
+                    </label>
+                  </div>
+
+                  <button
+                    className="btn-save-gateway"
+                    onClick={saveStripeGateway}
+                    disabled={savingStripe}
+                  >
+                    {savingStripe ? 'Saving...' : 'Save Gateway Settings'}
+                  </button>
                 </div>
-                <div className="payment-toggle">
-                  <span>Enable Webhook</span>
-                  <label className="switch">
-                    <input type="checkbox" checked={stripeEnabled} onChange={toggleStripeWebhook} />
-                    <span className="slider"></span>
-                  </label>
-                </div>
-                <button className="btn-reconnect" onClick={reconnectStripe}>Reconnect Account</button>
               </div>
 
-              <div className="payment-card">
-                <div className="payment-header">
+              {/* ----- PAYPAL ----- */}
+              <div className="payment-gateway-card">
+                <div className="payment-gateway-title-row">
                   <h3>PayPal</h3>
-                  <span className="status-badge pending">Pending</span>
+                  <span className={`gateway-status ${paypalGateway.enabled ? 'enabled' : 'disabled'}`}>
+                    {paypalGateway.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
                 </div>
-                <div className="payment-field">
-                  <label>Account ID</label>
-                  <span>pp_9876543210</span>
+
+                <div className="payment-gateway-grid">
+                  <div className="payment-field-column">
+                    <label>API Key</label>
+                    <input
+                      className="payment-input"
+                      value={paypalGateway.apiKey}
+                      onChange={(e) => setPaypalGateway({ ...paypalGateway, apiKey: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="payment-field-column">
+                    <label>Secret Key</label>
+                    <input
+                      className="payment-input"
+                      value={paypalGateway.secretKey}
+                      onChange={(e) => setPaypalGateway({ ...paypalGateway, secretKey: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="payment-field">
-                  <label>Connected At</label>
-                  <span>Oct 20, 2024</span>
+
+                <div className="payment-field-column">
+                  <label>Merchant ID</label>
+                  <input
+                    className="payment-input"
+                    value={paypalGateway.merchantId}
+                    onChange={(e) => setPaypalGateway({ ...paypalGateway, merchantId: e.target.value })}
+                  />
                 </div>
-                <div className="payment-field">
-                  <label>Last Payment</label>
-                  <span>5 days ago</span>
+
+                <div className="payment-gateway-footer">
+                  <div className="payment-toggle">
+                    <span>Enable Gateway</span>
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={paypalGateway.enabled}
+                        onChange={(e) => setPaypalGateway({ ...paypalGateway, enabled: e.target.checked })}
+                      />
+                      <span className="slider"></span>
+                    </label>
+                  </div>
+
+                  <button
+                    className="btn-save-gateway"
+                    onClick={savePaypalGateway}
+                    disabled={savingPaypal}
+                  >
+                    {savingPaypal ? 'Saving...' : 'Save Gateway Settings'}
+                  </button>
                 </div>
-                <div className="payment-toggle">
-                  <span>Enable Webhook</span>
-                  <label className="switch">
-                    <input type="checkbox" checked={paypalEnabled} onChange={togglePaypalWebhook} />
-                    <span className="slider"></span>
-                  </label>
-                </div>
-                <button className="btn-reconnect" onClick={reconnectPaypal}>Reconnect Account</button>
               </div>
+
             </div>
 
-            {/* Legal Document Management */}
+            {/* ---------------- LEGAL DOCUMENTS ---------------- */}
             <div className="section-header">
               <h2>Legal Document Management</h2>
+              <button className="btn-add" onClick={() => setShowAddDocumentModal(true)}>+ Add Document</button>
             </div>
-            <table className="legal-table">
-              <thead>
-                <tr>
-                  <th>Document Type</th>
-                  <th>Last Updated</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Terms of Service</td>
-                  <td>2024-10-15</td>
-                  <td><button className="btn-view">View</button></td>
-                </tr>
-                <tr>
-                  <td>Privacy Policy</td>
-                  <td>2024-09-28</td>
-                  <td><button className="btn-view">View</button></td>
-                </tr>
-                <tr>
-                  <td>Data Processing Agreement</td>
-                  <td>2024-10-01</td>
-                  <td><button className="btn-view">View</button></td>
-                </tr>
-                <tr>
-                  <td>Refund Policy</td>
-                  <td>2024-09-15</td>
-                  <td><button className="btn-view">View</button></td>
-                </tr>
-                <tr>
-                  <td>License Agreement</td>
-                  <td>2024-10-12</td>
-                  <td><button className="btn-view">View</button></td>
-                </tr>
-              </tbody>
-            </table>
 
-            {/* Language Settings */}
+            {legalDocuments.length === 0 ? (
+              <div className="integration-card">
+                <h3>No legal documents found</h3>
+                <p className="card-subtitle">Add a document to get started.</p>
+              </div>
+            ) : (
+              <table className="legal-table">
+                <thead>
+                  <tr>
+                    <th>Document Type</th>
+                    <th>Last Updated</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {legalDocuments.map((doc, idx) => (
+                    <tr key={idx}>
+                      <td>{doc.type}</td>
+                      <td>{doc.lastUpdated}</td>
+                      <td><button className="btn-view">View</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* ---------------- LANGUAGES ---------------- */}
             <div className="section-header">
               <h2>Language Settings</h2>
             </div>
+
             <div className="language-cards">
-              <div className="language-card">
-                <div className="language-info">
-                  <h4>English (US)</h4>
-                  <label className="switch">
-                    <input type="checkbox" checked={englishEnabled} onChange={() => setEnglishEnabled(!englishEnabled)} />
-                    <span className="slider"></span>
-                  </label>
-                </div>
-                <span className="language-status">Primary Translation</span>
-              </div>
-              <div className="language-card">
-                <div className="language-info">
-                  <h4>Portuguese (PT)</h4>
-                  <label className="switch">
-                    <input type="checkbox" checked={portugueseEnabled} onChange={() => setPortugueseEnabled(!portugueseEnabled)} />
-                    <span className="slider"></span>
-                  </label>
-                </div>
-                <span className="language-status">Inactive Translation</span>
-              </div>
+              {(() => {
+                const lang = getEnglishLanguage();
+                return (
+                  <div className="language-card" key={lang.key}>
+                    <div className="language-info">
+                      <h4>{lang.name}</h4>
+
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={!!lang.enabled}
+                          onChange={() => toast.warn("Only 1 language exist")}
+                        />
+                        <span className="slider"></span>
+                      </label>
+                    </div>
+
+                    <span className="language-status">{lang.statusLabel}</span>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* Integration Error Log */}
+            {/* ---------------- ERROR LOGS ---------------- */}
             <div className="section-header">
               <h2>Integration Error Log</h2>
-              <button className="btn-clear" onClick={clearErrorLogs}>Clear Logs</button>
+
+              <button className="btn-clear" onClick={clearLogs}>
+                Clear Logs
+              </button>
             </div>
-            <table className="error-table">
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Source</th>
-                  <th>Message</th>
-                  <th>Severity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {errorLogs.map((log, idx) => (
-                  <tr key={idx}>
-                    <td>{log.timestamp}</td>
-                    <td>{log.source}</td>
-                    <td>{log.message}</td>
-                    <td><span className={`severity-badge ${log.severity.toLowerCase()}`}>{log.severity}</span></td>
+
+            {errorLogs.length === 0 ? (
+              <div className="integration-card">
+                <h3>No error logs found</h3>
+                <p className="card-subtitle">All systems running smoothly.</p>
+              </div>
+            ) : (
+              <table className="error-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Source</th>
+                    <th>Message</th>
+                    <th>Severity</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {errorLogs.map((log, idx) => (
+                    <tr key={idx}>
+                      <td>{new Date(log.timestamp).toLocaleString()}</td>
+                      <td>{log.source}</td>
+                      <td>{log.message}</td>
+                      <td>
+                        <span className={`severity-badge ${String(log.severity || 'error').toLowerCase()}`}>
+                          {log.severity}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
           </div>
         ) : (
+          /* ------------------ REPORTS TAB ------------------ */
           <div className="reports-content">
+
             <div className="reports-header">
               <h2>Reports & Analytics</h2>
               <div className="total-revenue-card">
                 <span className="label">Total Revenue</span>
-                <span className="value">$78,920</span>
+                <span className="value">
+                  {totalRevenue.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                </span>
               </div>
             </div>
 
-            {/* Key Performance Indicators */}
+            {/* KPIs */}
             <div className="kpi-section">
               <h3>Key Performance Indicators</h3>
+
               <div className="kpi-grid">
                 <div className="kpi-card">
                   <div className="kpi-label">Total Revenue</div>
-                  <div className="kpi-value">$115,450</div>
+                  <div className="kpi-value">
+                    {totalRevenue.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                  </div>
                   <div className="kpi-change positive">↑ 12%</div>
                   <div className="kpi-subtitle">From previous earnings</div>
                 </div>
+
                 <div className="kpi-card">
                   <div className="kpi-label">Average Occupancy Rate</div>
-                  <div className="kpi-value">88%</div>
+                  <div className="kpi-value">{averageOccupancy}%</div>
                   <div className="kpi-change positive">↑ 5%</div>
                   <div className="kpi-subtitle">Across all properties</div>
                 </div>
               </div>
             </div>
 
-            {/* Revenue Reports */}
+            {/* Recent Transactions */}
             <div className="revenue-section">
-              <h3>Revenue Reports</h3>
-              <div className="revenue-subsection">
-                <h4>Recent Transactions</h4>
-                <p className="subsection-subtitle">Detailed list of recent activities</p>
-                <table className="transactions-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Date</th>
-                      <th>Amount</th>
-                      <th>Status</th>
+              <h3>Recent Transactions</h3>
+
+              <table className="transactions-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentTransactions.map(txn => (
+                    <tr key={txn.id}>
+                      <td>{txn.id}</td>
+                      <td>{txn.date}</td>
+                      <td>{txn.amount}</td>
+                      <td>
+                        <span className={`status-pill ${txn.status.toLowerCase()}`}>
+                          {txn.status}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {recentTransactions.map((txn) => (
-                      <tr key={txn.id}>
-                        <td>{txn.id}</td>
-                        <td>{txn.date}</td>
-                        <td>{txn.amount}</td>
-                        <td><span className={`status-pill ${txn.status.toLowerCase()}`}>{txn.status}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            {/* Occupancy Rate Reports */}
+            {/* Occupancy */}
             <div className="occupancy-section">
               <h3>Occupancy Rate Reports</h3>
+
               <div className="occupancy-grid">
                 <div className="occupancy-chart-card">
-                  <h4>Property Occupancy Overview</h4>
-                  <p className="subsection-subtitle">Current occupancy of properties and available units</p>
+                  <h4>Occupancy Overview</h4>
+
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
                       <Pie
@@ -512,26 +762,16 @@ const ManageIntegrations = () => {
                         dataKey="value"
                       >
                         {occupancyChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={index} />
                         ))}
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="chart-legend">
-                    <div className="legend-item">
-                      <div className="legend-dot" style={{ background: '#4A90E2' }}></div>
-                      <span>67 Occupied</span>
-                    </div>
-                    <div className="legend-item">
-                      <div className="legend-dot" style={{ background: '#E8F1FA' }}></div>
-                      <span>33 Available</span>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="occupancy-details-card">
                   <h4>Occupancy Details by Property</h4>
-                  <p className="subsection-subtitle">Breakdown of occupancy rates per property</p>
+
                   <table className="occupancy-table">
                     <thead>
                       <tr>
@@ -542,16 +782,19 @@ const ManageIntegrations = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {occupancyData.map((item, idx) => (
+                      {occupancyData.map((row, idx) => (
                         <tr key={idx}>
-                          <td>{item.property}</td>
-                          <td>{item.unitType}</td>
-                          <td><span className="occupancy-rate">{item.occupancy}</span></td>
-                          <td>{item.available}</td>
+                          <td>{row.property}</td>
+                          <td>{row.unitType}</td>
+                          <td>
+                            <span className="occupancy-rate">{row.occupancy}</span>
+                          </td>
+                          <td>{row.available}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+
                 </div>
               </div>
             </div>
@@ -559,6 +802,7 @@ const ManageIntegrations = () => {
             {/* Payout Reports */}
             <div className="payout-section">
               <h3>Payout Reports</h3>
+
               <table className="payout-table">
                 <thead>
                   <tr>
@@ -570,33 +814,37 @@ const ManageIntegrations = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {payoutReports.map((payout) => (
+                  {payoutReports.map(payout => (
                     <tr key={payout.id}>
                       <td>{payout.id}</td>
                       <td>{payout.date}</td>
                       <td>{payout.amount}</td>
-                      <td><span className={`status-pill ${payout.status.toLowerCase()}`}>{payout.status}</span></td>
+                      <td>
+                        <span className={`status-pill ${payout.status.toLowerCase()}`}>
+                          {payout.status}
+                        </span>
+                      </td>
                       <td>{payout.method}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+
             </div>
           </div>
         )}
+
       </div>
 
-      {/* Add Integration Modal */}
+      {/* ADD / EDIT INTEGRATION MODAL */}
       {showAddIntegration && (
         <div className="modal-overlay" onMouseDown={() => setShowAddIntegration(false)}>
           <div className="modal-card" onMouseDown={(e) => e.stopPropagation()}>
-            <h2>Add New Integration</h2>
+            <h2>{newIntegration.id ? 'Edit Integration' : 'Add New Integration'}</h2>
 
             <label className="modal-label">Integration Name</label>
             <input
               className="modal-input"
-              type="text"
-              placeholder="e.g. OpenWeatherMap, Google Maps, Stripe"
               value={newIntegration.name}
               onChange={(e) => setNewIntegration({ ...newIntegration, name: e.target.value })}
             />
@@ -608,29 +856,83 @@ const ManageIntegrations = () => {
               onChange={(e) => setNewIntegration({ ...newIntegration, type: e.target.value })}
             >
               <option value="">Select Type</option>
-              <option value="weather">Weather</option>
-              <option value="maps">Maps</option>
-              <option value="payment">Payment Gateway</option>
+              <option value="storage">Storage</option>
+              <option value="communication">Communication</option>
               <option value="analytics">Analytics</option>
-              <option value="communication">Messaging / Communication</option>
+              <option value="other">Other</option>
             </select>
+
+            <label className="modal-label">Provider</label>
+            <input
+              className="modal-input"
+              value={newIntegration.provider}
+              onChange={(e) => setNewIntegration({ ...newIntegration, provider: e.target.value })}
+            />
 
             <label className="modal-label">API Key / Credentials</label>
             <input
               className="modal-input"
-              type="text"
-              placeholder="Enter API Key or connection string"
               value={newIntegration.apiKey}
               onChange={(e) => setNewIntegration({ ...newIntegration, apiKey: e.target.value })}
             />
 
+            <label className="modal-label">Status</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <label className="switch" style={{ marginBottom: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={!!newIntegration.enabled}
+                  onChange={(e) => setNewIntegration({ ...newIntegration, enabled: e.target.checked })}
+                />
+                <span className="slider"></span>
+              </label>
+              <span>{newIntegration.enabled ? 'Enabled' : 'Disabled'}</span>
+            </div>
+
             <div className="modal-actions">
-              <button className="modal-cancel" onClick={() => setShowAddIntegration(false)}>Cancel</button>
-              <button className="modal-save" onClick={handleAddIntegration}>Add Integration</button>
+              <button className="modal-cancel" onClick={() => { setShowAddIntegration(false); setNewIntegration({ id: null, name: '', type: '', provider: '', apiKey: '', enabled: true }); }}>Cancel</button>
+              <button className="modal-save" onClick={handleSaveIntegration}>{newIntegration.id ? 'Save Changes' : 'Add Integration'}</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ADD DOCUMENT MODAL */}
+      {showAddDocumentModal && (
+        <div className="modal-overlay" onMouseDown={() => setShowAddDocumentModal(false)}>
+          <div className="modal-card" onMouseDown={(e) => e.stopPropagation()}>
+            <h2>Add Legal Document</h2>
+
+            <label className="modal-label">Document Type</label>
+            <input
+              className="modal-input"
+              value={newDocument.type}
+              onChange={(e) => setNewDocument({ ...newDocument, type: e.target.value })}
+            />
+
+            <label className="modal-label">Last Updated (optional)</label>
+            <input
+              className="modal-input"
+              type="date"
+              value={newDocument.lastUpdated}
+              onChange={(e) => setNewDocument({ ...newDocument, lastUpdated: e.target.value })}
+            />
+
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setShowAddDocumentModal(false)}>Cancel</button>
+              <button className="modal-save" onClick={handleAddDocument}>Add Document</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM MODAL */}
+      <ConfirmModal
+        visible={confirm.visible}
+        message={confirm.message}
+        onCancel={() => setConfirm({ visible: false, message: '', onConfirm: null })}
+        onConfirm={() => confirm.onConfirm && confirm.onConfirm()}
+      />
     </div>
   );
 };
