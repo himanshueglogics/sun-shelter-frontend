@@ -47,7 +47,7 @@ const AddNewBeach = () => {
       // Only update if the event relates to the currently selected zone (if any)
       if (selectedZone && payload.zoneId !== String(selectedZone)) return;
       setSunbeds(prev => prev.map(b => {
-       
+
         const match = b.id ? String(b.id) === String(payload.sunbed?.id) : (b.row === payload.sunbed?.row && b.col === payload.sunbed?.col);
         return match ? { ...b, ...payload.sunbed } : b;
       }));
@@ -99,7 +99,7 @@ const AddNewBeach = () => {
         const firstZone = beach.zones[0];
         const firstZoneId = String(firstZone?.id)
         setSelectedZone(prev => prev || firstZoneId);
-        
+
         // Immediately set rows/cols from first zone to avoid showing 0
         if (firstZone) {
           setRows(firstZone.rows || 0);
@@ -159,7 +159,7 @@ const AddNewBeach = () => {
       // Always use zone's actual rows/cols values
       setRows(z.rows || 0);
       setCols(z.cols || 0);
-      
+
       if (Array.isArray(z.sunbeds) && z.sunbeds.length > 0) {
         // Use backend-provided sunbeds when present
         setSunbeds(z.sunbeds);
@@ -182,7 +182,7 @@ const AddNewBeach = () => {
   useEffect(() => {
     // If there are already sunbeds (from backend), don't overwrite
     if (sunbeds.length > 0) return;
-    const z = zones.find(zz => String( zz.id) === String(selectedZone));
+    const z = zones.find(zz => String(zz.id) === String(selectedZone));
     const r = (z && z.rows) || rows;
     const c = (z && z.cols) || cols;
     if (r > 0 && c > 0) {
@@ -216,7 +216,7 @@ const AddNewBeach = () => {
     }
     setSunbeds(beds);
     if (selectedZone) {
-      setZones(prev => prev.map(zz => String( zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: beds } : zz));
+      setZones(prev => prev.map(zz => String(zz.id) === String(selectedZone) ? { ...zz, rows, cols, sunbeds: beds } : zz));
     }
   }, [rows, cols, selectedZone, isEditMode, id]);
 
@@ -237,7 +237,7 @@ const AddNewBeach = () => {
       });
 
       if (selectedZone) {
-        setZones(prev => prev.map(z => 
+        setZones(prev => prev.map(z =>
           String(z.id) === String(selectedZone)
             ? { ...z, sunbeds: updated }
             : z
@@ -268,6 +268,12 @@ const AddNewBeach = () => {
   };
 
   const saveBeach = async () => {
+    const trimmedName = (form.name || '').trim();
+    const trimmedLocation = (form.location || '').trim();
+    if (!trimmedName || !trimmedLocation) {
+      toast.error('Please provide both beach name and location before saving.');
+      return;
+    }
     try {
       if (!isEditMode) {
         const hasValidZone = Array.isArray(zones) && zones.some(z => Number(z.rows) > 0 && Number(z.cols) > 0);
@@ -277,19 +283,19 @@ const AddNewBeach = () => {
         }
       }
       const payload = {
-        name: form.name,
-        location: form.location,
+        name: trimmedName,
+        location: trimmedLocation,
         status: form.status,
         services: form.services,
         pricePerDay: Number(form.pricePerDay) || 0
       };
-      
+
       let beachId;
       if (isEditMode) {
         // Update existing beach
         await axios.put(`/beaches/${id}`, payload);
         beachId = id;
-        
+
         // Update zones with current sunbed state
         for (const zone of zones) {
           if (zone.id && zone.sunbeds && zone.sunbeds.length > 0) {
@@ -312,7 +318,7 @@ const AddNewBeach = () => {
         }
         const res = await axios.post('/beaches', payload);
         beachId = res.data.id;
-        
+
         // Create zones with sunbed data
         for (const zone of zones) {
           if (zone.rows > 0 && zone.cols > 0) {
@@ -324,10 +330,10 @@ const AddNewBeach = () => {
             });
           }
         }
-        
+
         toast.success('Beach created successfully!');
       }
-      
+
       navigate('/manage-beaches');
     } catch (err) {
       console.error(`Failed to ${isEditMode ? 'update' : 'create'} beach:`, err);
@@ -339,14 +345,14 @@ const AddNewBeach = () => {
     <div className="dashboard-layout">
       <Sidebar />
       <div className="dashboard-content add-beach-page">
-        
+
         <div className="beach-form-container">
           <div className="image-upload-section">
-        <button className='backbuttonmain' onClick={() => navigate('/manage-beaches')}>
-          <ChevronLeft size={24} />
-          <span>{isEditMode ? 'Edit Beach' : 'Add New Beach'}</span>
-        </button>
-            
+            <button className='backbuttonmain' onClick={() => navigate('/manage-beaches')}>
+              <ChevronLeft size={24} />
+              <span>{isEditMode ? 'Edit Beach' : 'Add New Beach'}</span>
+            </button>
+
             <div className="image-preview">
               {imagePreview ? (
                 <img src={imagePreview} alt="Beach preview" />
@@ -360,7 +366,7 @@ const AddNewBeach = () => {
               </button>
               <input id="imageInput" type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
             </div>
-            
+
           </div>
 
           <div className="form-row">
@@ -397,13 +403,13 @@ const AddNewBeach = () => {
                   View on Google Maps
                 </a>
               ) : <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(form.location)}`}
-                  className="view-map-link"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View on Google Maps
-                </a>}
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(form.location)}`}
+                className="view-map-link"
+                target="_blank"
+                rel="noreferrer"
+              >
+                View on Google Maps
+              </a>}
             </div>
             {/* <div className="form-field">
               <label>Price Per Day ($)</label>
@@ -446,33 +452,35 @@ const AddNewBeach = () => {
               {zones.map(zone => {
                 const zid = String(zone.id);
                 return (
-                <div key={zid} className={`zone-chip ${String(selectedZone) === zid ? 'selected' : ''}`} onClick={() => setSelectedZone(zid)}>
-                  <span>{zone.name}</span>
-                  <button onClick={(e) => { e.stopPropagation(); removeZone(zone.id); }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              );})}
+                  <div key={zid} className={`zone-chip ${String(selectedZone) === zid ? 'selected' : ''}`} onClick={() => setSelectedZone(zid)}>
+                    <span>{zone.name}</span>
+                    <button onClick={(e) => { e.stopPropagation(); removeZone(zone.id); }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           <div className="sunbed-section">
             <h3>Select Sunbed</h3>
-            
+
             {/* Zone Selection Checkboxes */}
             <div className="zone-checkboxes">
               {zones.map((zone, idx) => {
-                const zid = String( zone.id);
+                const zid = String(zone.id);
                 return (
-                <label key={zid} className="zone-checkbox-item">
-                  <input 
-                    type="checkbox" 
-                    checked={String(selectedZone) === zid} 
-                    onChange={() => setSelectedZone(String(selectedZone) === zid ? null : zid)} 
-                  />
-                  <span>Zone {idx + 1}</span>
-                </label>
-              );})}
+                  <label key={zid} className="zone-checkbox-item">
+                    <input
+                      type="checkbox"
+                      checked={String(selectedZone) === zid}
+                      onChange={() => setSelectedZone(String(selectedZone) === zid ? null : zid)}
+                    />
+                    <span>Zone {idx + 1}</span>
+                  </label>
+                );
+              })}
             </div>
 
             {/* Grid Controls with Date Pickers */}
@@ -480,10 +488,10 @@ const AddNewBeach = () => {
               <div className="control-field">
                 <label>Select number of rows</label>
                 <div className="input-with-icon">
-                  <input 
-                    type="text" 
-                    value={rows} 
-                    onChange={(e) => setRows(Number(e.target.value) )} 
+                  <input
+                    type="text"
+                    value={rows}
+                    onChange={(e) => setRows(Number(e.target.value))}
                     placeholder="Select number of rows"
                   />
                   <span className="calendar-icon">📅</span>
@@ -492,10 +500,10 @@ const AddNewBeach = () => {
               <div className="control-field">
                 <label>Select number of columns</label>
                 <div className="input-with-icon">
-                  <input 
-                    type="text" 
-                    value={cols} 
-                    onChange={(e) => setCols(Number(e.target.value))} 
+                  <input
+                    type="text"
+                    value={cols}
+                    onChange={(e) => setCols(Number(e.target.value))}
                     placeholder="Select number of columns"
                   />
                   <span className="calendar-icon">📅</span>

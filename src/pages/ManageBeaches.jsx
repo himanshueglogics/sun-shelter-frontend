@@ -108,14 +108,20 @@ const ManageBeaches = () => {
   const createBeach = async (e) => {
     e.preventDefault();
     try {
+      const trimmedName = (form.name || '').trim();
+      const trimmedLocation = (form.location || '').trim();
+      if (!trimmedName || !trimmedLocation) {
+        toast.error('Please provide both beach name and location before creating.');
+        return;
+      }
       const hasInitialZone = (Number(form.zoneRows) > 0 && Number(form.zoneCols) > 0);
       if (!hasInitialZone) {
         toast.error('Please provide initial zone rows and columns (both greater than 0).');
         return;
       }
       const payload = {
-        name: form.name,
-        location: form.location,
+        name: trimmedName,
+        location: trimmedLocation,
         pricePerDay: Number(form.pricePerDay) || 0,
         status: form.status,
         amenities: form.amenities,
@@ -187,7 +193,7 @@ const ManageBeaches = () => {
 
         <h2 className="section-title">Quick Stats</h2>
         <div className="stats-grid">
-          <div className="stat-card stat-total-beaches" style={{backgroundColor:"#b6cfdb"}}>
+          <div className="stat-card stat-total-beaches" style={{ backgroundColor: "#b6cfdb" }}>
             <div className="stat-info">
               <div className="stat-label">Total Beaches Managed</div>
               <div className="stat-value">{stats.totalBeaches}</div>
@@ -196,7 +202,7 @@ const ManageBeaches = () => {
               <Building2 size={22} />
             </div>
           </div>
-          <div className="stat-card stat-active-admins" style={{backgroundColor:"#ddc591"}}>
+          <div className="stat-card stat-active-admins" style={{ backgroundColor: "#ddc591" }}>
             <div className="stat-info">
               <div className="stat-label">Active Admins</div>
               <div className="stat-value">{stats.activeAdmins}</div>
@@ -302,7 +308,7 @@ const ManageBeaches = () => {
                 <div className="form-field">
                   <label>Select Admin User(s)</label>
                   <div className="custom-select-wrapper">
-                   
+
                     <input
                       type="text"
                       value={adminSearch}
@@ -417,7 +423,7 @@ const ManageBeaches = () => {
                 try {
 
                   let roleForBackend = (addAdminModal.role || 'User').toLowerCase() === 'user' ? 'admin' : (addAdminModal.role || 'admin').toLowerCase();
-                
+
                   const payload = {
                     name: addAdminModal.name,
                     email: addAdminModal.email,
